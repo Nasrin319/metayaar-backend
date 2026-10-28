@@ -50,7 +50,9 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
+            // The website and admin proxy /storage to this app, so media URLs stay on their own origin
+            // (the API itself is not public). Set PUBLIC_STORAGE_URL=/storage; it defaults to APP_URL.
+            'url' => env('PUBLIC_STORAGE_URL', rtrim(env('APP_URL', 'http://localhost'), '/').'/storage'),
             'visibility' => 'public',
             'throw' => false,
             'report' => false,

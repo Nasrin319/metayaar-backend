@@ -4,6 +4,7 @@ use App\Enums\Permission;
 use App\Enums\Role;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\ListingReviewController;
+use App\Http\Controllers\Api\V1\Admin\StoreTabController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\AppAccessController;
 use App\Http\Controllers\Api\V1\AuthController;
@@ -41,6 +42,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
     });
 
     Route::get('apps', [StoreController::class, 'index'])->name('apps.index');
+    Route::get('store-tabs', [StoreController::class, 'tabs'])->name('store-tabs.index');
     Route::get('apps/{listing:slug}', [StoreController::class, 'show'])->name('apps.show');
 
     Route::middleware('auth:sanctum')->group(function () {
@@ -93,6 +95,10 @@ Route::prefix('v1')->name('v1.')->group(function () {
                 Route::get('users', 'index')->name('users.index');
                 Route::put('users/{user}/roles', 'updateRoles')->name('users.roles');
             });
+
+            Route::apiResource('store-tabs', StoreTabController::class)
+                ->except('show')
+                ->middleware('permission:'.Permission::CurateStore->value);
         });
     });
 });

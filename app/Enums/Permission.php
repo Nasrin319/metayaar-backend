@@ -9,6 +9,7 @@ enum Permission: string
 {
     case ReviewListings = 'listings.review';
     case ManageUsers = 'users.manage';
+    case CurateStore = 'store.curate';
 
     /**
      * @return list<string>

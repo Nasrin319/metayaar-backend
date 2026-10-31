@@ -16,7 +16,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call(RoleSeeder::class);
+        $this->call([RoleSeeder::class, StoreTabSeeder::class]);
 
         // One demo account per role, password "password" (e.g. developer@example.com).
         // Existing accounts are kept, so the seeder can run again on a seeded database.

@@ -3,7 +3,9 @@
 namespace Tests\Feature\Api\V1;
 
 use App\Enums\ListingStatus;
+use App\Enums\StoreTabRule;
 use App\Models\Listing;
+use App\Models\StoreTab;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -104,5 +106,27 @@ class StoreTest extends TestCase
         $draft = Listing::factory()->create();
 
         $this->getJson(route('v1.apps.show', $draft))->assertNotFound();
+    }
+
+    public function test_catalog_filters_by_store_tab_rule(): void
+    {
+        $published = Listing::factory()->status(ListingStatus::Published);
+        $published->create(['title' => 'Paid shooter', 'price' => 50000, 'tags' => ['shooter'], 'category' => 'action']);
+        $published->create(['title' => 'Free puzzle', 'price' => 0, 'tags' => ['brain'], 'category' => 'puzzle']);
+        $published->create(['title' => 'Soon', 'price' => 10000, 'early_access' => true, 'category' => 'puzzle']);
+
+        StoreTab::factory()->matching(StoreTabRule::Free)->create(['slug' => 'free']);
+        StoreTab::factory()->matching(StoreTabRule::EarlyAccess)->create(['slug' => 'soon']);
+        StoreTab::factory()->matching(StoreTabRule::Category, 'puzzle')->create(['slug' => 'puzzle']);
+        StoreTab::factory()->matching(StoreTabRule::Tag, 'shooter')->create(['slug' => 'shooting']);
+        StoreTab::factory()->matching(StoreTabRule::Free)->create(['slug' => 'hidden', 'is_active' => false]);
+
+        $titles = fn (string $tab) => $this->getJson(route('v1.apps.index', ['tab' => $tab]))->assertOk()->json('data.*.title');
+
+        $this->assertSame(['Free puzzle'], $titles('free'));
+        $this->assertSame(['Soon'], $titles('soon'));
+        $this->assertEqualsCanonicalizing(['Free puzzle', 'Soon'], $titles('puzzle'));
+        $this->assertSame(['Paid shooter'], $titles('shooting'));
+        $this->getJson(route('v1.apps.index', ['tab' => 'hidden']))->assertNotFound();
     }
 }

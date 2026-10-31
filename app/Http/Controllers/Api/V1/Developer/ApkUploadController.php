@@ -172,7 +172,7 @@ class ApkUploadController extends Controller
             'original_name' => $apkUpload->original_name,
             'size' => $apkUpload->size,
             'received_bytes' => $apkUpload->received_bytes,
-            'chunk_size' => ApkUpload::CHUNK_SIZE,
+            'chunk_size' => ApkUpload::chunkSize(),
         ];
     }
 }

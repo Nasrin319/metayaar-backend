@@ -45,7 +45,7 @@ class ApkUploadTest extends TestCase
         $upload = $this->startUpload('neon-blade.apk', strlen($apk))
             ->assertCreated()
             ->assertJsonPath('data.received_bytes', 0)
-            ->assertJsonPath('data.chunk_size', ApkUpload::CHUNK_SIZE)
+            ->assertJsonPath('data.chunk_size', ApkUpload::chunkSize())
             ->json('data.id');
 
         $this->sendChunk($upload, 0, substr($apk, 0, 1000))->assertOk()->assertJsonPath('data.received_bytes', 1000);

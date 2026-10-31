@@ -23,9 +23,14 @@ class ApkUpload extends Model
     use HasFactory, HasUuids, Prunable;
 
     /**
-     * Largest chunk the client may send in one request (5 MB), below PHP's upload limit.
+     * Preferred chunk size (5 MB). The actual size may be smaller, see chunkSize().
      */
     public const int CHUNK_SIZE = 5 * 1024 * 1024;
+
+    /**
+     * Room left in a request for the multipart headers and the "offset" field.
+     */
+    private const int REQUEST_OVERHEAD = 64 * 1024;
 
     /**
      * Largest APK accepted (4 GB).
@@ -38,6 +43,36 @@ class ApkUpload extends Model
     protected $attributes = [
         'received_bytes' => 0,
     ];
+
+    /**
+     * The largest chunk this server accepts in one request: CHUNK_SIZE, or less when PHP's
+     * upload_max_filesize or post_max_size is lower. PHP discards larger files before Laravel sees them.
+     */
+    public static function chunkSize(): int
+    {
+        $limits = array_filter([
+            self::iniBytes('upload_max_filesize'),
+            self::iniBytes('post_max_size') - self::REQUEST_OVERHEAD,
+        ], fn (int $bytes) => $bytes > 0);
+
+        return max(256 * 1024, min([self::CHUNK_SIZE, ...$limits]));
+    }
+
+    /**
+     * A php.ini size such as "2M" in bytes; 0 means unlimited.
+     */
+    private static function iniBytes(string $key): int
+    {
+        $value = trim((string) ini_get($key));
+        $number = (int) $value;
+
+        return match (strtoupper(substr($value, -1))) {
+            'G' => $number * 1024 ** 3,
+            'M' => $number * 1024 ** 2,
+            'K' => $number * 1024,
+            default => $number,
+        };
+    }
 
     protected static function booted(): void
     {

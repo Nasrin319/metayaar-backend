@@ -25,7 +25,7 @@ class ApkChunkRequest extends FormRequest
     {
         return [
             'offset' => ['required', 'integer', 'min:0'],
-            'chunk' => ['required', 'file', 'max:'.(ApkUpload::CHUNK_SIZE / 1024)],
+            'chunk' => ['required', 'file', 'max:'.intdiv(ApkUpload::chunkSize(), 1024)],
         ];
     }
 }

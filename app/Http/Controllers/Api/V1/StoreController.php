@@ -6,7 +6,9 @@ use App\Enums\ListingStatus;
 use App\Enums\ListingType;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\StoreListingResource;
+use App\Http\Resources\StoreTabResource;
 use App\Models\Listing;
+use App\Models\StoreTab;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Validation\Rule;
@@ -17,12 +19,13 @@ use Illuminate\Validation\Rule;
 class StoreController extends Controller
 {
     /**
-     * Published listings, newest first unless sorted by price.
+     * Published listings, newest first unless sorted by price. A `tab` narrows them by that store tab's rule.
      */
     public function index(Request $request): AnonymousResourceCollection
     {
         $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
+            'tab' => ['nullable', 'string', 'max:50'],
             'category' => ['nullable', 'string', 'max:50'],
             'type' => ['nullable', Rule::enum(ListingType::class)],
             'free' => ['nullable', 'boolean'],
@@ -30,8 +33,13 @@ class StoreController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
+        $tab = $request->filled('tab')
+            ? StoreTab::where('is_active', true)->where('slug', $request->input('tab'))->firstOrFail()
+            : null;
+
         $listings = Listing::with('developer:id,name')
             ->where('status', ListingStatus::Published)
+            ->when($tab, fn ($query) => $tab->rule->apply($query, $tab->value))
             ->when($request->input('q'), fn ($query, $search) => $query->where(
                 fn ($query) => $query->whereLike('title', "%{$search}%")->orWhereLike('tagline', "%{$search}%")
             ))
@@ -52,6 +60,14 @@ class StoreController extends Controller
             ->withQueryString();
 
         return StoreListingResource::collection($listings);
+    }
+
+    /**
+     * The active filter tabs of the apps page, in display order.
+     */
+    public function tabs(): AnonymousResourceCollection
+    {
+        return StoreTabResource::collection(StoreTab::where('is_active', true)->ordered()->get());
     }
 
     /**

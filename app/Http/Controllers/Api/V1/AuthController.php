@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\AccountType;
 use App\Enums\OtpChannel;
 use App\Enums\OtpPurpose;
 use App\Enums\Role;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\LoginRequest;
 use App\Http\Requests\Api\V1\Otp\LoginWithCodeRequest;
 use App\Http\Requests\Api\V1\RegisterRequest;
+use App\Http\Requests\Api\V1\UpdateOrganizationRequest;
 use App\Http\Requests\Api\V1\UpdatePasswordRequest;
 use App\Http\Requests\Api\V1\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
@@ -156,6 +158,26 @@ class AuthController extends Controller
         }
 
         $user->save();
+
+        return new UserResource($user->load('organization'));
+    }
+
+    /**
+     * Turn the signed-in individual account into an organization account with the given details,
+     * or change the details of an organization account. Roles are kept as they are.
+     */
+    public function updateOrganization(UpdateOrganizationRequest $request): UserResource
+    {
+        $user = $request->user();
+
+        DB::transaction(function () use ($request, $user): void {
+            $user->update(['account_type' => AccountType::Organization]);
+            $user->organization()->updateOrCreate([], [
+                'name' => $request->validated('name'),
+                'national_id' => $request->validated('national_id'),
+                'phone' => $request->validated('phone'),
+            ]);
+        });
 
         return new UserResource($user->load('organization'));
     }

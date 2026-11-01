@@ -267,6 +267,45 @@ class AuthTest extends TestCase
             ->assertJsonValidationErrors('email');
     }
 
+    public function test_individual_can_switch_to_an_organization_account(): void
+    {
+        $user = User::factory()->create()->assignRole(Role::Player->value);
+        Sanctum::actingAs($user);
+
+        $this->putJson(route('v1.me.organization'), ['name' => 'Acme VR', 'national_id' => '10101234567', 'phone' => '02112345678'])
+            ->assertOk()
+            ->assertJsonPath('data.account_type', 'organization')
+            ->assertJsonPath('data.organization.name', 'Acme VR')
+            ->assertJsonPath('data.organization.national_id', '10101234567');
+
+        $user->refresh();
+        $this->assertTrue($user->isOrganization());
+        $this->assertTrue($user->hasRole(Role::Player->value));
+    }
+
+    public function test_organization_can_update_its_details(): void
+    {
+        $user = User::factory()->organization()->create()->assignRole(Role::Developer->value);
+        Sanctum::actingAs($user);
+
+        $this->putJson(route('v1.me.organization'), ['name' => 'New Name'])
+            ->assertOk()
+            ->assertJsonPath('data.organization.name', 'New Name')
+            ->assertJsonPath('data.organization.national_id', null);
+
+        $this->assertDatabaseCount('organizations', 1);
+    }
+
+    public function test_organization_details_are_validated(): void
+    {
+        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Player->value));
+
+        $this->putJson(route('v1.me.organization'), ['national_id' => '12ab'])
+            ->assertJsonValidationErrors(['name', 'national_id']);
+
+        $this->assertDatabaseCount('organizations', 0);
+    }
+
     public function test_user_can_change_their_password_and_other_sessions_end(): void
     {
         $user = User::factory()->create(['password' => 'old-password-1'])->assignRole(Role::Player->value);

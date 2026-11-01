@@ -73,6 +73,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::middleware(['auth:sanctum', 'account:user'])->group(function () {
         Route::get('me', [AuthController::class, 'me'])->name('me');
         Route::put('me', [AuthController::class, 'updateProfile'])->name('me.update');
+        Route::put('me/organization', [AuthController::class, 'updateOrganization'])->name('me.organization');
         Route::put('me/password', [AuthController::class, 'updatePassword'])
             ->middleware('throttle:6,1')
             ->name('me.password');

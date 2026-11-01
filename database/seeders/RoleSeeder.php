@@ -30,6 +30,9 @@ class RoleSeeder extends Seeder
             PermissionModel::findOrCreate($permission->value, Admin::GUARD);
         }
 
+        // DatabaseSeeder runs without model events, so creating a permission does not refresh the cache itself.
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
         foreach (StaffRole::cases() as $staffRole) {
             $role = RoleModel::where(['name' => $staffRole->value, 'guard_name' => Admin::GUARD])->first();
             $isNew = ! $role;

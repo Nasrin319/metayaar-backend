@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Enums\OtpChannel;
+use App\Enums\OtpPurpose;
 use App\Enums\Role;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -34,33 +36,30 @@ class AuthTest extends TestCase
     }
 
     /**
-     * @return array<string, array{Role}>
+     * Staff roles belong to admin accounts and don't exist on the website.
+     *
+     * @return array<string, array{string}>
      */
     public static function staffRoles(): array
     {
         return [
-            'moderator' => [Role::Moderator],
-            'curator' => [Role::Curator],
-            'admin' => [Role::Admin],
+            'moderator' => ['moderator'],
+            'curator' => ['curator'],
+            'admin' => ['admin'],
         ];
-    }
-
-    /**
-     * @return array<string, array{Role}>
-     */
-    public static function allRoles(): array
-    {
-        return [...self::selfRegisterableRoles(), ...self::staffRoles()];
     }
 
     #[DataProvider('selfRegisterableRoles')]
     public function test_user_can_register_with_self_registerable_role(Role $role): void
     {
+        $this->issueOtp(OtpChannel::Email, 'jane@example.com', OtpPurpose::Signup);
+
         $response = $this->postJson(route('v1.auth.register', $role->value), [
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
             'password' => 'secret-password',
             'password_confirmation' => 'secret-password',
+            'email_code' => '123456',
         ]);
 
         $response->assertCreated()
@@ -72,15 +71,97 @@ class AuthTest extends TestCase
         $this->assertTrue(User::firstWhere('email', 'jane@example.com')->hasRole($role->value));
     }
 
-    #[DataProvider('staffRoles')]
-    public function test_staff_roles_cannot_self_register(Role $role): void
+    #[DataProvider('selfRegisterableRoles')]
+    public function test_user_can_register_as_an_organization(Role $role): void
     {
-        $this->postJson(route('v1.auth.register', $role->value), [
+        $this->issueOtp(OtpChannel::Email, 'jane@example.com', OtpPurpose::Signup);
+
+        $response = $this->postJson(route('v1.auth.register', $role->value), [
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
             'password' => 'secret-password',
             'password_confirmation' => 'secret-password',
-        ])->assertForbidden();
+            'email_code' => '123456',
+            'account_type' => 'organization',
+            'organization_name' => 'Acme VR',
+            'organization_national_id' => '10101234567',
+            'organization_phone' => '02112345678',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('user.account_type', 'organization')
+            ->assertJsonPath('user.organization.name', 'Acme VR')
+            ->assertJsonPath('user.organization.national_id', '10101234567');
+
+        $user = User::firstWhere('email', 'jane@example.com');
+        $this->assertTrue($user->isOrganization());
+        $this->assertTrue($user->hasRole($role->value));
+        $this->assertSame('Acme VR', $user->organization->name);
+    }
+
+    public function test_individual_registration_ignores_organization_fields(): void
+    {
+        $this->issueOtp(OtpChannel::Email, 'jane@example.com', OtpPurpose::Signup);
+
+        $this->postJson(route('v1.auth.register', 'player'), [
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+            'password' => 'secret-password',
+            'password_confirmation' => 'secret-password',
+            'email_code' => '123456',
+            'organization_name' => 'Acme VR',
+        ])->assertCreated()
+            ->assertJsonPath('user.account_type', 'individual')
+            ->assertJsonPath('user.organization', null);
+
+        $this->assertDatabaseCount('organizations', 0);
+    }
+
+    public function test_organization_registration_validates_organization_fields(): void
+    {
+        $this->postJson(route('v1.auth.register', 'player'), [
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+            'password' => 'secret-password',
+            'password_confirmation' => 'secret-password',
+            'account_type' => 'organization',
+            'organization_national_id' => '12ab',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['organization_name', 'organization_national_id']);
+
+        $this->postJson(route('v1.auth.register', 'player'), [
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+            'password' => 'secret-password',
+            'password_confirmation' => 'secret-password',
+            'account_type' => 'company',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['account_type']);
+
+        $this->assertDatabaseMissing('users', ['email' => 'jane@example.com']);
+    }
+
+    public function test_profile_includes_organization_details(): void
+    {
+        $user = User::factory()->organization()->create()->assignRole(Role::Player->value);
+        Sanctum::actingAs($user, ['role:player']);
+
+        $this->getJson(route('v1.me'))
+            ->assertOk()
+            ->assertJsonPath('data.account_type', 'organization')
+            ->assertJsonPath('data.organization.name', $user->organization->name);
+    }
+
+    #[DataProvider('staffRoles')]
+    public function test_staff_roles_cannot_register_or_log_in_on_the_website(string $role): void
+    {
+        $this->postJson("/api/v1/auth/{$role}/register", [
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+            'password' => 'secret-password',
+            'password_confirmation' => 'secret-password',
+        ])->assertNotFound();
+        $this->postJson("/api/v1/auth/{$role}/login", ['email' => 'jane@example.com', 'password' => 'secret-password'])->assertNotFound();
 
         $this->assertDatabaseMissing('users', ['email' => 'jane@example.com']);
     }
@@ -105,7 +186,7 @@ class AuthTest extends TestCase
         ])->assertNotFound();
     }
 
-    #[DataProvider('allRoles')]
+    #[DataProvider('selfRegisterableRoles')]
     public function test_user_can_login_with_their_role(Role $role): void
     {
         $user = User::factory()->create()->assignRole($role->value);
@@ -118,6 +199,16 @@ class AuthTest extends TestCase
             ->assertJsonPath('user.id', $user->id);
 
         $this->assertTrue($user->tokens()->first()->can("role:{$role->value}"));
+    }
+
+    public function test_login_ignores_email_case_and_spaces(): void
+    {
+        $user = User::factory()->create(['email' => 'jane@example.com'])->assignRole(Role::Player->value);
+
+        $this->postJson(route('v1.auth.login', 'player'), [
+            'email' => ' Jane@Example.com ',
+            'password' => 'password',
+        ])->assertOk()->assertJsonPath('user.id', $user->id);
     }
 
     public function test_user_cannot_login_with_a_role_they_do_not_have(): void
@@ -220,8 +311,8 @@ class AuthTest extends TestCase
     {
         Sanctum::actingAs($user = User::factory()->create()->assignRole(Role::Player->value));
 
-        $this->postJson(route('v1.me.roles.store', 'admin'))->assertForbidden();
-        $this->assertFalse($user->fresh()->hasRole(Role::Admin->value));
+        $this->postJson('/api/v1/me/roles/admin')->assertNotFound();
+        $this->assertSame(['player'], $user->fresh()->getRoleNames()->all());
     }
 
     public function test_role_middleware_restricts_role_areas(): void

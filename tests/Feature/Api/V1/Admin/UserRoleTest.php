@@ -3,6 +3,8 @@
 namespace Tests\Feature\Api\V1\Admin;
 
 use App\Enums\Role;
+use App\Enums\StaffRole;
+use App\Models\Admin;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -13,19 +15,16 @@ class UserRoleTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $admin;
-
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->seed(RoleSeeder::class);
-        $this->admin = User::factory()->create()->assignRole(Role::Admin->value);
     }
 
-    public function test_admin_searches_users_and_changes_their_roles(): void
+    public function test_admin_searches_users_and_changes_their_website_roles(): void
     {
-        Sanctum::actingAs($this->admin);
+        Sanctum::actingAs(Admin::factory()->create()->assignRole(StaffRole::Admin->value));
         $user = User::factory()->create(['email' => 'sara@studio.test'])->assignRole(Role::Player->value);
 
         $this->getJson(route('v1.admin.users.index', ['search' => 'SARA@']))
@@ -33,40 +32,31 @@ class UserRoleTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.email', 'sara@studio.test');
 
-        $this->putJson(route('v1.admin.users.roles', $user), ['roles' => ['player', 'moderator']])
+        $this->putJson(route('v1.admin.users.roles', $user), ['roles' => ['player', 'developer']])
             ->assertOk()
-            ->assertJsonPath('data.roles', ['player', 'moderator'])
-            ->assertJsonPath('data.permissions', ['listings.review']);
+            ->assertJsonPath('data.roles', ['player', 'developer']);
 
-        $this->putJson(route('v1.admin.users.roles', $user), ['roles' => ['owner']])->assertJsonValidationErrors('roles.0');
+        // staff roles are not website roles
+        $this->putJson(route('v1.admin.users.roles', $user), ['roles' => ['moderator']])->assertJsonValidationErrors('roles.0');
     }
 
-    public function test_admin_cannot_remove_their_own_admin_role(): void
+    public function test_staff_without_the_permission_cannot_manage_users(): void
     {
-        Sanctum::actingAs($this->admin);
-
-        $this->putJson(route('v1.admin.users.roles', $this->admin), ['roles' => ['player']])
-            ->assertJsonValidationErrors('roles');
-        $this->assertTrue($this->admin->fresh()->hasRole(Role::Admin->value));
-    }
-
-    public function test_moderators_cannot_manage_users(): void
-    {
-        $moderator = User::factory()->create()->assignRole(Role::Moderator->value);
-        Sanctum::actingAs($moderator);
+        Sanctum::actingAs(Admin::factory()->create()->assignRole(StaffRole::Moderator->value));
+        $user = User::factory()->create()->assignRole(Role::Player->value);
 
         $this->getJson(route('v1.admin.users.index'))->assertForbidden();
-        $this->putJson(route('v1.admin.users.roles', $moderator), ['roles' => ['admin']])->assertForbidden();
-        $this->assertFalse($moderator->fresh()->hasRole(Role::Admin->value));
+        $this->putJson(route('v1.admin.users.roles', $user), ['roles' => ['developer']])->assertForbidden();
+        $this->assertFalse($user->fresh()->hasRole(Role::Developer->value));
     }
 
-    public function test_assign_role_command_creates_the_first_admin(): void
+    public function test_assign_role_command_gives_a_website_role(): void
     {
-        $user = User::factory()->create(['email' => 'owner@metayaar.test']);
+        $user = User::factory()->create(['email' => 'studio@metayaar.test']);
 
-        $this->artisan('app:assign-role', ['email' => 'owner@metayaar.test', 'role' => 'admin'])->assertSuccessful();
-        $this->artisan('app:assign-role', ['email' => 'owner@metayaar.test', 'role' => 'owner'])->assertFailed();
+        $this->artisan('app:assign-role', ['email' => 'studio@metayaar.test', 'role' => 'developer'])->assertSuccessful();
+        $this->artisan('app:assign-role', ['email' => 'studio@metayaar.test', 'role' => 'admin'])->assertFailed();
 
-        $this->assertTrue($user->fresh()->hasRole(Role::Admin->value));
+        $this->assertSame(['developer'], $user->fresh()->getRoleNames()->all());
     }
 }

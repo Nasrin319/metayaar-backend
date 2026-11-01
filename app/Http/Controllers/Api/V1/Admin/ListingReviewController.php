@@ -11,7 +11,9 @@ use App\Models\Listing;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The moderation queue: reviewers inspect submitted listings (and their APKs) and approve or reject them.
@@ -29,6 +31,7 @@ class ListingReviewController extends Controller
         ]);
 
         $listings = Listing::with('developer')
+            ->withCount('downloads')
             ->where('status', $request->input('status', ListingStatus::InReview->value))
             ->when($request->input('type'), fn ($query, $type) => $query->where('type', $type))
             ->orderBy('submitted_at')
@@ -59,5 +62,18 @@ class ListingReviewController extends Controller
         $listing->reject($request->user(), $request->string('reason'));
 
         return new ListingResource($listing->load('developer'));
+    }
+
+    /**
+     * Stream the listing's APK to a reviewer, whatever its status.
+     */
+    public function download(Listing $listing): StreamedResponse
+    {
+        Gate::authorize('reviewDownload', $listing);
+
+        return Storage::disk('apks')->download($listing->apk_path, "{$listing->slug}.apk", [
+            'Content-Type' => 'application/vnd.android.package-archive',
+            'Cache-Control' => 'private, no-store',
+        ]);
     }
 }

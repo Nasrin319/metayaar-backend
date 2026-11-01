@@ -2,17 +2,17 @@
 
 namespace App\Enums;
 
+/**
+ * Roles of website accounts (the "users" table). Staff are separate Admin accounts whose roles are
+ * created in the admin panel, see App\Models\Admin.
+ */
 enum Role: string
 {
     case Player = 'player';
     case Developer = 'developer';
-    case Moderator = 'moderator';
-    case Curator = 'curator';
-    case Admin = 'admin';
 
     /**
      * Roles that anyone can sign up for through the public register endpoint.
-     * Staff roles (moderator, curator, admin) are assigned by an admin.
      *
      * @return list<self>
      */
@@ -24,20 +24,6 @@ enum Role: string
     public function isSelfRegisterable(): bool
     {
         return in_array($this, self::selfRegisterable(), true);
-    }
-
-    /**
-     * Admin panel abilities this role holds. Admins manage everything, moderators review apps.
-     *
-     * @return list<Permission>
-     */
-    public function permissions(): array
-    {
-        return match ($this) {
-            self::Admin => Permission::cases(),
-            self::Moderator => [Permission::ReviewListings],
-            default => [],
-        };
     }
 
     /**

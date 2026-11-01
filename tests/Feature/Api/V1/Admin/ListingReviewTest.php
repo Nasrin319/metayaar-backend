@@ -4,6 +4,8 @@ namespace Tests\Feature\Api\V1\Admin;
 
 use App\Enums\ListingStatus;
 use App\Enums\Role;
+use App\Enums\StaffRole;
+use App\Models\Admin;
 use App\Models\Listing;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -24,20 +26,20 @@ class ListingReviewTest extends TestCase
     }
 
     /**
-     * @return array<string, array{Role}>
+     * @return array<string, array{StaffRole}>
      */
     public static function reviewerRoles(): array
     {
         return [
-            'admin' => [Role::Admin],
-            'moderator' => [Role::Moderator],
+            'admin' => [StaffRole::Admin],
+            'moderator' => [StaffRole::Moderator],
         ];
     }
 
     #[DataProvider('reviewerRoles')]
-    public function test_reviewers_see_the_queue_oldest_submission_first(Role $role): void
+    public function test_reviewers_see_the_queue_oldest_submission_first(StaffRole $role): void
     {
-        $this->actingAsRole($role);
+        $this->actingAsStaff($role);
         $newer = Listing::factory()->status(ListingStatus::InReview)->create(['submitted_at' => now()]);
         $older = Listing::factory()->status(ListingStatus::InReview)->create(['submitted_at' => now()->minus(days: 2)]);
         Listing::factory()->status(ListingStatus::Draft)->create();
@@ -53,9 +55,9 @@ class ListingReviewTest extends TestCase
     }
 
     #[DataProvider('reviewerRoles')]
-    public function test_reviewers_approve_a_listing_in_review(Role $role): void
+    public function test_reviewers_approve_a_listing_in_review(StaffRole $role): void
     {
-        $reviewer = $this->actingAsRole($role);
+        $reviewer = $this->actingAsStaff($role);
         $listing = Listing::factory()->status(ListingStatus::InReview)->create();
 
         $this->postJson(route('v1.admin.listings.approve', $listing))
@@ -68,7 +70,7 @@ class ListingReviewTest extends TestCase
 
     public function test_rejection_needs_a_reason_that_the_developer_sees(): void
     {
-        $this->actingAsRole(Role::Moderator);
+        $this->actingAsStaff(StaffRole::Moderator);
         $listing = Listing::factory()->status(ListingStatus::InReview)->create();
 
         $this->postJson(route('v1.admin.listings.reject', $listing))->assertJsonValidationErrors('reason');
@@ -83,7 +85,7 @@ class ListingReviewTest extends TestCase
 
     public function test_only_listings_in_review_can_be_reviewed(): void
     {
-        $this->actingAsRole(Role::Admin);
+        $this->actingAsStaff(StaffRole::Admin);
         $draft = Listing::factory()->status(ListingStatus::Draft)->create();
 
         $this->postJson(route('v1.admin.listings.approve', $draft))->assertConflict();
@@ -93,19 +95,18 @@ class ListingReviewTest extends TestCase
     /**
      * @return array<string, array{Role}>
      */
-    public static function nonReviewerRoles(): array
+    public static function websiteRoles(): array
     {
         return [
             'player' => [Role::Player],
             'developer' => [Role::Developer],
-            'curator' => [Role::Curator],
         ];
     }
 
-    #[DataProvider('nonReviewerRoles')]
-    public function test_other_roles_cannot_use_the_admin_panel(Role $role): void
+    #[DataProvider('websiteRoles')]
+    public function test_website_accounts_cannot_use_the_admin_api(Role $role): void
     {
-        $this->actingAsRole($role);
+        Sanctum::actingAs(User::factory()->create()->assignRole($role->value));
         $listing = Listing::factory()->status(ListingStatus::InReview)->create();
 
         $this->getJson(route('v1.admin.dashboard'))->assertForbidden();
@@ -114,9 +115,20 @@ class ListingReviewTest extends TestCase
         $this->assertSame(ListingStatus::InReview, $listing->refresh()->status);
     }
 
+    public function test_staff_without_the_review_permission_cannot_review(): void
+    {
+        $this->actingAsStaff(StaffRole::Curator);
+        $listing = Listing::factory()->status(ListingStatus::InReview)->create();
+
+        $this->getJson(route('v1.admin.dashboard'))->assertOk();
+        $this->getJson(route('v1.admin.listings.index'))->assertForbidden();
+        $this->postJson(route('v1.admin.listings.approve', $listing))->assertForbidden();
+        $this->assertSame(ListingStatus::InReview, $listing->refresh()->status);
+    }
+
     public function test_dashboard_counts_listings_by_status(): void
     {
-        $this->actingAsRole(Role::Moderator);
+        $this->actingAsStaff(StaffRole::Moderator);
         Listing::factory()->count(2)->status(ListingStatus::InReview)->create();
         Listing::factory()->status(ListingStatus::Published)->create();
 
@@ -127,11 +139,11 @@ class ListingReviewTest extends TestCase
             ->assertJsonPath('data.listings.rejected', 0);
     }
 
-    private function actingAsRole(Role $role): User
+    private function actingAsStaff(StaffRole $role): Admin
     {
-        $user = User::factory()->create()->assignRole($role->value);
-        Sanctum::actingAs($user);
+        $admin = Admin::factory()->create()->assignRole($role->value);
+        Sanctum::actingAs($admin);
 
-        return $user;
+        return $admin;
     }
 }

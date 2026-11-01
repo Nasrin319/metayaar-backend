@@ -95,13 +95,23 @@ class Listing extends Model
     }
 
     /**
-     * The moderator or admin who approved or rejected the listing.
+     * The staff member who approved or rejected the listing.
      *
-     * @return BelongsTo<User, $this>
+     * @return BelongsTo<Admin, $this>
      */
     public function reviewer(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'reviewed_by');
+        return $this->belongsTo(Admin::class, 'reviewed_by');
+    }
+
+    /**
+     * Every download of this listing's APK.
+     *
+     * @return HasMany<Download, $this>
+     */
+    public function downloads(): HasMany
+    {
+        return $this->hasMany(Download::class);
     }
 
     /**
@@ -262,7 +272,7 @@ class Listing extends Model
     /**
      * Publish the listing in the store.
      */
-    public function approve(User $reviewer): void
+    public function approve(Admin $reviewer): void
     {
         $this->forceFill([
             'status' => ListingStatus::Published,
@@ -275,7 +285,7 @@ class Listing extends Model
     /**
      * Send the listing back to the developer with the reason it was not accepted.
      */
-    public function reject(User $reviewer, string $reason): void
+    public function reject(Admin $reviewer, string $reason): void
     {
         $this->forceFill([
             'status' => ListingStatus::Rejected,

@@ -28,6 +28,7 @@ class ListingController extends Controller
         ]);
 
         $listings = $request->user()->listings()
+            ->withCount('downloads')
             ->when($request->input('type'), fn ($query, $type) => $query->where('type', $type))
             ->when($request->input('status'), fn ($query, $status) => $query->where('status', $status))
             ->latest()

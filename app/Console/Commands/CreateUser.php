@@ -9,8 +9,8 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('app:create-user {email : Email to log in with} {--name= : Display name (defaults to the part before @)} {--role=admin : One of player, developer, moderator, curator, admin}')]
-#[Description('Create a verified user with a role, e.g. the first admin on a new server. Asks for the password.')]
+#[Signature('app:create-user {email : Email to log in with} {--name= : Display name (defaults to the part before @)} {--role=player : One of player, developer}')]
+#[Description('Create a verified website user with a role. Staff accounts are created with app:create-admin. Asks for the password.')]
 class CreateUser extends Command
 {
     /**

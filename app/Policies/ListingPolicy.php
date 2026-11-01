@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Enums\ListingStatus;
 use App\Enums\Permission;
+use App\Models\Admin;
 use App\Models\Listing;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
@@ -43,8 +44,9 @@ class ListingPolicy
     }
 
     /**
-     * Determine whether the user can download the listing's APK. Developers and reviewers can always
-     * fetch it; players need a published listing that is free or that they have purchased.
+     * Determine whether the user can download the listing's APK. Its developer can always fetch it;
+     * players need a published listing that is free or that they have purchased. Staff download through
+     * the admin API (see reviewDownload).
      */
     public function download(User $user, Listing $listing): Response
     {
@@ -52,7 +54,7 @@ class ListingPolicy
             return Response::denyAsNotFound();
         }
 
-        if ($listing->user_id === $user->id || $user->hasPermissionTo(Permission::ReviewListings->value)) {
+        if ($listing->user_id === $user->id) {
             return Response::allow();
         }
 
@@ -68,11 +70,23 @@ class ListingPolicy
     }
 
     /**
-     * Determine whether the user can approve or reject the listing.
+     * Determine whether a staff member can fetch the listing's APK to review it, in any status.
      */
-    public function review(User $user, Listing $listing): Response
+    public function reviewDownload(Admin $admin, Listing $listing): Response
     {
-        if (! $user->hasPermissionTo(Permission::ReviewListings->value)) {
+        if (! $admin->hasPermissionTo(Permission::ReviewListings->value)) {
+            return Response::deny();
+        }
+
+        return $listing->hasApk() ? Response::allow() : Response::denyAsNotFound();
+    }
+
+    /**
+     * Determine whether a staff member can approve or reject the listing.
+     */
+    public function review(Admin $admin, Listing $listing): Response
+    {
+        if (! $admin->hasPermissionTo(Permission::ReviewListings->value)) {
             return Response::deny();
         }
 

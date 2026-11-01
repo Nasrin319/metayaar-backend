@@ -3,13 +3,16 @@
 namespace App\Enums;
 
 /**
- * Admin panel abilities. Roles are granted these in RoleSeeder via Role::permissions().
+ * Admin panel abilities, held by staff roles (guard "admin"). Each one is checked somewhere in code,
+ * so new permissions are added here as features need them; admins combine them into roles in the panel.
  */
 enum Permission: string
 {
     case ReviewListings = 'listings.review';
     case ManageUsers = 'users.manage';
     case CurateStore = 'store.curate';
+    case ManageStaff = 'staff.manage';
+    case ViewStatistics = 'statistics.view';
 
     /**
      * @return list<string>

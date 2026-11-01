@@ -4,6 +4,8 @@ namespace Tests\Feature\Api\V1;
 
 use App\Enums\ListingStatus;
 use App\Enums\Role;
+use App\Enums\StaffRole;
+use App\Models\Admin;
 use App\Models\Listing;
 use App\Models\Purchase;
 use App\Models\User;
@@ -78,8 +80,12 @@ class DownloadTest extends TestCase
         Sanctum::actingAs($listing->developer);
         $this->get(route('v1.apps.download', $listing))->assertOk();
 
-        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Moderator->value));
-        $this->get(route('v1.apps.download', $listing))->assertOk();
+        Sanctum::actingAs(Admin::factory()->create()->assignRole(StaffRole::Moderator->value));
+        $this->get(route('v1.admin.apps.download', $listing))->assertOk();
+        $this->getJson(route('v1.apps.download', $listing))->assertForbidden();
+
+        Sanctum::actingAs(Admin::factory()->create()->assignRole(StaffRole::Curator->value));
+        $this->getJson(route('v1.admin.apps.download', $listing))->assertForbidden();
     }
 
     public function test_listing_without_an_apk_cannot_be_downloaded(): void

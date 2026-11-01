@@ -2,10 +2,10 @@
 
 namespace Tests\Feature\Api\V1\Admin;
 
-use App\Enums\Role;
+use App\Enums\StaffRole;
 use App\Enums\StoreTabRule;
+use App\Models\Admin;
 use App\Models\StoreTab;
-use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -24,7 +24,7 @@ class StoreTabTest extends TestCase
 
     public function test_admin_creates_updates_and_deletes_tabs(): void
     {
-        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Admin->value));
+        Sanctum::actingAs(Admin::factory()->create()->assignRole(StaffRole::Admin->value));
 
         $id = $this->postJson(route('v1.admin.store-tabs.store'), [
             'label' => 'تیراندازی',
@@ -60,7 +60,7 @@ class StoreTabTest extends TestCase
 
     public function test_category_and_tag_tabs_need_a_value_and_slugs_are_unique(): void
     {
-        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Admin->value));
+        Sanctum::actingAs(Admin::factory()->create()->assignRole(StaffRole::Admin->value));
         StoreTab::factory()->create(['slug' => 'free']);
 
         $this->postJson(route('v1.admin.store-tabs.store'), [
@@ -84,7 +84,7 @@ class StoreTabTest extends TestCase
 
     public function test_moderators_cannot_manage_tabs(): void
     {
-        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Moderator->value));
+        Sanctum::actingAs(Admin::factory()->create()->assignRole(StaffRole::Moderator->value));
         $tab = StoreTab::factory()->create();
 
         $this->getJson(route('v1.admin.store-tabs.index'))->assertForbidden();

@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Enums\AccountType;
+use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -41,5 +43,14 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
+    }
+
+    /**
+     * An organization account with its organization details.
+     */
+    public function organization(): static
+    {
+        return $this->state(['account_type' => AccountType::Organization])
+            ->has(Organization::factory(), 'organization');
     }
 }

@@ -17,6 +17,17 @@ class UpdateProfileRequest extends FormRequest
     }
 
     /**
+     * Emails are stored lowercase; accept them typed with capitals or spaces (phones capitalize the
+     * first letter), since PostgreSQL compares them case-sensitively.
+     */
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('email'))) {
+            $this->merge(['email' => mb_strtolower(trim($this->input('email')))]);
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, ValidationRule|array<mixed>|string>

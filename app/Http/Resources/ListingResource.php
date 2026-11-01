@@ -39,6 +39,7 @@ class ListingResource extends JsonResource
             'links' => $this->links ?? [],
             'trailer_url' => $this->trailer_url,
             'early_access' => $this->early_access,
+            'downloads_count' => $this->whenCounted('downloads'),
             'apk' => $this->hasApk() ? [
                 'original_name' => $this->apk_original_name,
                 'size' => $this->apk_size,

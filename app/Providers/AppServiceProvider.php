@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Support\Sms\LogSmsSender;
+use App\Support\Sms\MelipayamakSmsSender;
+use App\Support\Sms\SmsSender;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\ServiceProvider;
@@ -14,7 +17,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(SmsSender::class, fn (): SmsSender => match (config('services.sms.driver')) {
+            'melipayamak' => new MelipayamakSmsSender(
+                (string) config('services.melipayamak.username'),
+                (string) config('services.melipayamak.password'),
+                (int) config('services.melipayamak.otp_body_id'),
+            ),
+            default => new LogSmsSender,
+        });
     }
 
     /**

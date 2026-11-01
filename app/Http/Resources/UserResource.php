@@ -23,8 +23,12 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'email_verified_at' => $this->email_verified_at,
+            'mobile' => $this->mobile,
+            'mobile_verified_at' => $this->mobile_verified_at,
+            'avatar_url' => $this->avatarUrl(),
+            'account_type' => $this->account_type,
+            'organization' => $this->whenLoaded('organization', fn () => $this->organization?->only(['name', 'national_id', 'phone'])),
             'roles' => $this->getRoleNames(),
-            'permissions' => $this->getAllPermissions()->pluck('name'),
             'created_at' => $this->created_at,
         ];
     }

@@ -3,27 +3,50 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\AccountType;
+use App\Models\Concerns\HasAvatar;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'account_type'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, HasRoles, Notifiable;
+    use HasApiTokens, HasAvatar, HasFactory, HasRoles, Notifiable;
 
     /**
      * The guard spatie/laravel-permission stores roles under, shared by session and Sanctum token auth.
      */
     protected string $guard_name = 'web';
+
+    protected function avatarDirectory(): string
+    {
+        return "avatars/{$this->id}";
+    }
+
+    /**
+     * Details of an organization account; null for individuals.
+     *
+     * @return HasOne<Organization, $this>
+     */
+    public function organization(): HasOne
+    {
+        return $this->hasOne(Organization::class);
+    }
+
+    public function isOrganization(): bool
+    {
+        return $this->account_type === AccountType::Organization;
+    }
 
     /**
      * Listings this user publishes as a developer.
@@ -33,6 +56,16 @@ class User extends Authenticatable
     public function listings(): HasMany
     {
         return $this->hasMany(Listing::class);
+    }
+
+    /**
+     * APKs this user downloaded.
+     *
+     * @return HasMany<Download, $this>
+     */
+    public function downloads(): HasMany
+    {
+        return $this->hasMany(Download::class);
     }
 
     /**
@@ -58,7 +91,9 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'account_type' => AccountType::class,
             'email_verified_at' => 'datetime',
+            'mobile_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

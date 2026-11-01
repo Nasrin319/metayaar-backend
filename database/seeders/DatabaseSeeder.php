@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Enums\Role;
+use App\Enums\StaffRole;
+use App\Models\Admin;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -18,7 +20,8 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([RoleSeeder::class, StoreTabSeeder::class]);
 
-        // One demo account per role, password "password" (e.g. developer@example.com).
+        // Demo accounts, password "password": one website user per role (e.g. developer@example.com) and
+        // one staff account per starting staff role (e.g. admin@example.com, for the admin panel).
         // Existing accounts are kept, so the seeder can run again on a seeded database.
         foreach (Role::cases() as $role) {
             $email = "{$role->value}@example.com";
@@ -29,6 +32,17 @@ class DatabaseSeeder extends Seeder
             ]);
 
             $user->assignRole($role->value);
+        }
+
+        foreach (StaffRole::cases() as $role) {
+            $email = "{$role->value}@example.com";
+
+            $admin = Admin::firstWhere('email', $email) ?? Admin::factory()->create([
+                'name' => ucfirst($role->value),
+                'email' => $email,
+            ]);
+
+            $admin->assignRole($role->value);
         }
     }
 }

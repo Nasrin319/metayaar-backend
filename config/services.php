@@ -28,16 +28,15 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
-    // one-time codes by SMS: "melipayamak" in production, "log" writes them to the log
+    // one-time codes by SMS: "msgway" in production, "log" writes them to the log
     'sms' => [
         'driver' => env('SMS_DRIVER', 'log'),
     ],
 
-    'melipayamak' => [
-        'username' => env('MELIPAYAMAK_USERNAME'),
-        'password' => env('MELIPAYAMAK_PASSWORD'),
-        // ID of the approved shared-line template; its text must contain {0} for the code
-        'otp_body_id' => env('MELIPAYAMAK_OTP_BODY_ID'),
+    'msgway' => [
+        'api_key' => env('MSGWAY_API_KEY'),
+        // ID of the approved template on the MsgWay panel; its first parameter is the code
+        'otp_template_id' => env('MSGWAY_OTP_TEMPLATE_ID'),
     ],
 
     'slack' => [

@@ -9,7 +9,7 @@ use App\Models\OtpCode;
 use App\Models\User;
 use App\Notifications\OtpCodeNotification;
 use App\Support\Otp;
-use App\Support\Sms\MelipayamakSmsSender;
+use App\Support\Sms\MsgwaySmsSender;
 use App\Support\Sms\SmsSender;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -289,23 +289,25 @@ class OtpTest extends TestCase
         $this->assertSame([], $this->sentSms);
     }
 
-    public function test_melipayamak_sends_the_code_with_the_template(): void
+    public function test_msgway_sends_the_code_with_the_template(): void
     {
-        Http::fake(['rest.payamak-panel.com/*' => Http::response(['Value' => '4512308765432198', 'RetStatus' => 1, 'StrRetStatus' => 'Ok'])]);
+        Http::fake(['api.msgway.com/*' => Http::response(['status' => 'success', 'referenceID' => '12345678'])]);
 
-        (new MelipayamakSmsSender('user', 'pass', 12345))->sendOtp('09123456789', '654321');
+        (new MsgwaySmsSender('secret-key', 22891))->sendOtp('09123456789', '654321');
 
-        Http::assertSent(fn (ClientRequest $request): bool => $request->url() === 'https://rest.payamak-panel.com/api/SendSMS/BaseServiceNumber'
-            && $request['to'] === '09123456789'
-            && $request['text'] === '654321'
-            && (int) $request['bodyId'] === 12345);
+        Http::assertSent(fn (ClientRequest $request): bool => $request->url() === 'https://api.msgway.com/send'
+            && $request->hasHeader('apiKey', 'secret-key')
+            && $request['method'] === 'sms'
+            && $request['mobile'] === '09123456789'
+            && $request['templateID'] === 22891
+            && $request['params'] === ['654321']);
     }
 
-    public function test_melipayamak_errors_are_thrown(): void
+    public function test_msgway_errors_are_thrown(): void
     {
-        Http::fake(['rest.payamak-panel.com/*' => Http::response(['Value' => '11', 'RetStatus' => 0, 'StrRetStatus' => 'InvalidBodyId'])]);
+        Http::fake(['api.msgway.com/*' => Http::response(['status' => 'error', 'error' => ['code' => 2, 'message' => 'invalid template']], 400)]);
 
         $this->expectException(\RuntimeException::class);
-        (new MelipayamakSmsSender('user', 'pass', 1))->sendOtp('09123456789', '654321');
+        (new MsgwaySmsSender('secret-key', 1))->sendOtp('09123456789', '654321');
     }
 }

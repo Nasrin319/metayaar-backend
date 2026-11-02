@@ -67,6 +67,7 @@ class Listing extends Model
             'type' => ListingType::class,
             'status' => ListingStatus::class,
             'price' => 'integer',
+            'commission_percent' => 'integer',
             'submitted_at' => 'datetime',
             'reviewed_at' => 'datetime',
             'apk_size' => 'integer',
@@ -122,6 +123,14 @@ class Listing extends Model
     public function apkUploads(): HasMany
     {
         return $this->hasMany(ApkUpload::class);
+    }
+
+    /**
+     * Metayaar's percent of each sale: the one an admin set for this listing, else the default setting.
+     */
+    public function commissionPercent(): int
+    {
+        return $this->commission_percent ?? Setting::integer('default_commission_percent');
     }
 
     /**

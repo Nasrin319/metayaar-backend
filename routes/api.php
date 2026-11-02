@@ -6,7 +6,9 @@ use App\Enums\Role;
 use App\Http\Controllers\Api\V1\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\DownloadController as AdminDownloadController;
+use App\Http\Controllers\Api\V1\Admin\FinanceController;
 use App\Http\Controllers\Api\V1\Admin\ListingReviewController;
+use App\Http\Controllers\Api\V1\Admin\SettingController;
 use App\Http\Controllers\Api\V1\Admin\StaffController;
 use App\Http\Controllers\Api\V1\Admin\StaffRoleController;
 use App\Http\Controllers\Api\V1\Admin\StoreTabController;
@@ -18,6 +20,8 @@ use App\Http\Controllers\Api\V1\Developer\ApkUploadController;
 use App\Http\Controllers\Api\V1\Developer\ListingController;
 use App\Http\Controllers\Api\V1\Developer\ListingDownloadController;
 use App\Http\Controllers\Api\V1\Developer\ListingMediaController;
+use App\Http\Controllers\Api\V1\Developer\PayoutAccountController;
+use App\Http\Controllers\Api\V1\Developer\WalletController;
 use App\Http\Controllers\Api\V1\DownloadController;
 use App\Http\Controllers\Api\V1\OtpController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
@@ -100,6 +104,10 @@ Route::prefix('v1')->name('v1.')->group(function () {
             ->name('apps.download');
 
         Route::middleware('role:developer')->prefix('developer')->name('developer.')->group(function () {
+            Route::get('payout-account', [PayoutAccountController::class, 'show'])->name('payout-account.show');
+            Route::put('payout-account', [PayoutAccountController::class, 'update'])->name('payout-account.update');
+            Route::get('wallet', WalletController::class)->name('wallet');
+
             Route::apiResource('apps', ListingController::class)->parameters(['apps' => 'listing']);
             Route::post('apps/{listing}/submit', [ListingController::class, 'submit'])->name('apps.submit');
             Route::post('apps/{listing}/duplicate', [ListingController::class, 'duplicate'])->name('apps.duplicate');
@@ -157,6 +165,19 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::apiResource('store-tabs', StoreTabController::class)
                 ->except('show')
                 ->middleware('permission:'.Permission::CurateStore->value);
+
+            Route::middleware('permission:'.Permission::ManageFinance->value)->controller(FinanceController::class)->group(function () {
+                Route::get('finance', 'show')->name('finance.show');
+                Route::put('finance/commission', 'updateDefaultCommission')->name('finance.commission');
+                Route::put('listings/{listing}/commission', 'updateListingCommission')->name('listings.commission');
+            });
+
+            Route::middleware('permission:'.Permission::ManageSettings->value)->controller(SettingController::class)->group(function () {
+                Route::get('settings', 'show')->name('settings.show');
+                Route::put('settings', 'update')->name('settings.update');
+                Route::get('otp-lockouts', 'lockouts')->name('otp-lockouts.index');
+                Route::delete('otp-lockouts/{otpLockout}', 'unlock')->name('otp-lockouts.destroy');
+            });
 
             Route::middleware('permission:'.Permission::ManageStaff->value)->group(function () {
                 Route::get('permissions', [StaffRoleController::class, 'permissions'])->name('permissions.index');

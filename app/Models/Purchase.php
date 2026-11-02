@@ -9,9 +9,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * A player's ownership of a paid listing. Created by the payment flow once a payment is verified.
+ * A player's ownership of a paid listing, with how its price was split between Metayaar and the
+ * developer. Created by App\Support\Sales once a payment is verified.
  */
-#[Fillable(['listing_id', 'amount'])]
+#[Fillable(['listing_id', 'amount', 'commission_percent', 'commission_amount', 'developer_amount'])]
 class Purchase extends Model
 {
     /** @use HasFactory<PurchaseFactory> */
@@ -26,6 +27,9 @@ class Purchase extends Model
     {
         return [
             'amount' => 'integer',
+            'commission_percent' => 'integer',
+            'commission_amount' => 'integer',
+            'developer_amount' => 'integer',
         ];
     }
 

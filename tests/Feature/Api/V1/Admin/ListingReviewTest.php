@@ -7,6 +7,7 @@ use App\Enums\Role;
 use App\Enums\StaffRole;
 use App\Models\Admin;
 use App\Models\Listing;
+use App\Models\PayoutAccount;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -137,6 +138,21 @@ class ListingReviewTest extends TestCase
             ->assertJsonPath('data.listings.in_review', 2)
             ->assertJsonPath('data.listings.published', 1)
             ->assertJsonPath('data.listings.rejected', 0);
+    }
+
+    public function test_reviewers_see_the_developers_payout_details_on_a_listing(): void
+    {
+        $listing = Listing::factory()->status(ListingStatus::InReview)->create(['price' => 50000]);
+        PayoutAccount::factory()->for($listing->developer)->create(['sheba' => 'IR062960000000100324200001']);
+        $this->actingAsStaff(StaffRole::Moderator);
+
+        $this->getJson(route('v1.admin.listings.show', $listing))
+            ->assertOk()
+            ->assertJsonPath('data.developer.payout_account.sheba', 'IR062960000000100324200001');
+
+        $this->getJson(route('v1.admin.listings.index'))
+            ->assertOk()
+            ->assertJsonMissingPath('data.0.developer.payout_account');
     }
 
     private function actingAsStaff(StaffRole $role): Admin

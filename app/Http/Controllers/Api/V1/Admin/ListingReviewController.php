@@ -43,7 +43,7 @@ class ListingReviewController extends Controller
 
     public function show(Listing $listing): ListingResource
     {
-        return new ListingResource($listing->load('developer'));
+        return new ListingResource($listing->load('developer.payoutAccount'));
     }
 
     public function approve(Request $request, Listing $listing): ListingResource

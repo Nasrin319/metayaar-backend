@@ -13,6 +13,8 @@ enum Permission: string
     case CurateStore = 'store.curate';
     case ManageStaff = 'staff.manage';
     case ViewStatistics = 'statistics.view';
+    case ManageSettings = 'settings.manage';
+    case ManageFinance = 'finance.manage';
 
     /**
      * @return list<string>

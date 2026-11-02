@@ -43,6 +43,16 @@ class User extends Authenticatable
         return $this->hasOne(Organization::class);
     }
 
+    /**
+     * Where this developer's sales are paid out; null until saved.
+     *
+     * @return HasOne<PayoutAccount, $this>
+     */
+    public function payoutAccount(): HasOne
+    {
+        return $this->hasOne(PayoutAccount::class);
+    }
+
     public function isOrganization(): bool
     {
         return $this->account_type === AccountType::Organization;
@@ -78,6 +88,16 @@ class User extends Authenticatable
         return $this->hasMany(Purchase::class);
     }
 
+    /**
+     * Changes to this developer's wallet balance (wallet_balance), newest last.
+     *
+     * @return HasMany<WalletTransaction, $this>
+     */
+    public function walletTransactions(): HasMany
+    {
+        return $this->hasMany(WalletTransaction::class);
+    }
+
     public function hasPurchased(Listing $listing): bool
     {
         return $this->purchases()->whereBelongsTo($listing)->exists();
@@ -92,6 +112,7 @@ class User extends Authenticatable
     {
         return [
             'account_type' => AccountType::class,
+            'wallet_balance' => 'integer',
             'email_verified_at' => 'datetime',
             'mobile_verified_at' => 'datetime',
             'password' => 'hashed',

@@ -28,6 +28,9 @@ class ListingResource extends JsonResource
             'description' => $this->description,
             'category' => $this->category,
             'price' => $this->price,
+            // Metayaar's percent of each sale; commission_override is null when the default applies
+            'commission_percent' => $this->commissionPercent(),
+            'commission_override' => $this->commission_percent,
             'package_name' => $this->package_name,
             'external_url' => $this->external_url,
             'version_code' => $this->version_code,
@@ -59,6 +62,12 @@ class ListingResource extends JsonResource
                 'id' => $this->developer->id,
                 'name' => $this->developer->name,
                 'email' => $this->developer->email,
+                // reviewers load it to see who a paid listing's sales are paid to
+                'mobile' => $this->when($this->developer->relationLoaded('payoutAccount'), fn () => $this->developer->mobile),
+                'payout_account' => $this->when(
+                    $this->developer->relationLoaded('payoutAccount'),
+                    fn () => $this->developer->payoutAccount,
+                ),
             ]),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

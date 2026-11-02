@@ -4,7 +4,7 @@ namespace App\Providers;
 
 use App\Models\User;
 use App\Support\Sms\LogSmsSender;
-use App\Support\Sms\MelipayamakSmsSender;
+use App\Support\Sms\MsgwaySmsSender;
 use App\Support\Sms\SmsSender;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -18,10 +18,9 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(SmsSender::class, fn (): SmsSender => match (config('services.sms.driver')) {
-            'melipayamak' => new MelipayamakSmsSender(
-                (string) config('services.melipayamak.username'),
-                (string) config('services.melipayamak.password'),
-                (int) config('services.melipayamak.otp_body_id'),
+            'msgway' => new MsgwaySmsSender(
+                (string) config('services.msgway.api_key'),
+                (int) config('services.msgway.otp_template_id'),
             ),
             default => new LogSmsSender,
         });

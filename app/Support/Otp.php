@@ -5,6 +5,8 @@ namespace App\Support;
 use App\Enums\OtpChannel;
 use App\Enums\OtpPurpose;
 use App\Models\OtpCode;
+use App\Models\OtpLockout;
+use App\Models\Setting;
 use App\Notifications\OtpCodeNotification;
 use App\Support\Sms\SmsSender;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,6 +17,9 @@ use Illuminate\Validation\ValidationException;
 /**
  * Sends and checks one-time codes. A destination has at most one live code per purpose; sending a new
  * one replaces it. Codes expire, allow a few wrong guesses, and are used up once accepted.
+ *
+ * An email or mobile that is sent otp_max_sends codes without one being accepted gets no more codes
+ * for otp_lockout_hours (both admin settings). Accepting a code clears the count.
  */
 class Otp
 {
@@ -30,10 +35,19 @@ class Otp
     public function __construct(private SmsSender $sms) {}
 
     /**
-     * Send a new code. Throws a 429 validation error, keyed by $errorKey, when one was just sent.
+     * Send a new code. Throws a 429 validation error, keyed by $errorKey, when one was just sent or
+     * the destination is locked out.
      */
     public function send(OtpChannel $channel, string $destination, OtpPurpose $purpose, string $errorKey = 'destination'): void
     {
+        $lockout = $this->lockout($channel, $destination);
+
+        if ($lockout->isLocked()) {
+            throw ValidationException::withMessages([
+                $errorKey => [self::lockedMessage($lockout)],
+            ])->status(429);
+        }
+
         $latest = $this->latest($channel, $destination, $purpose);
 
         if ($latest && $latest->created_at->diffInSeconds(now()) < self::RESEND_SECONDS) {
@@ -59,6 +73,47 @@ class Otp
                 ->notify(new OtpCodeNotification($code, $purpose, self::TTL_MINUTES)),
             OtpChannel::Mobile => $this->sms->sendOtp($destination, $code),
         };
+
+        $this->countSend($lockout);
+    }
+
+    /**
+     * "ارسال کد تا ۴ ساعت و ۲۰ دقیقه دیگر ممکن نیست." for a locked-out destination.
+     */
+    public static function lockedMessage(OtpLockout $lockout): string
+    {
+        $minutes = max(1, (int) ceil(now()->diffInMinutes($lockout->locked_until)));
+        $hours = intdiv($minutes, 60);
+        $rest = $minutes % 60;
+        $wait = trim(($hours ? "{$hours} ساعت" : '').($hours && $rest ? ' و ' : '').($rest ? "{$rest} دقیقه" : ''));
+
+        return "به دلیل درخواست بیش از حد کد بدون ورود موفق، ارسال کد تا {$wait} دیگر ممکن نیست.";
+    }
+
+    /**
+     * The send counter of a destination, started over once its window or lockout has passed.
+     */
+    private function lockout(OtpChannel $channel, string $destination): OtpLockout
+    {
+        $lockout = OtpLockout::firstOrNew(['channel' => $channel, 'destination' => $destination]);
+        $hours = Setting::integer('otp_lockout_hours');
+
+        $lockoutEnded = $lockout->locked_until && ! $lockout->isLocked();
+        $windowEnded = ! $lockout->window_started_at || $lockout->window_started_at->addHours($hours)->isPast();
+        if ($lockoutEnded || $windowEnded) {
+            $lockout->fill(['sends' => 0, 'window_started_at' => now(), 'locked_until' => null]);
+        }
+
+        return $lockout;
+    }
+
+    private function countSend(OtpLockout $lockout): void
+    {
+        $lockout->sends++;
+        if ($lockout->sends >= Setting::integer('otp_max_sends')) {
+            $lockout->locked_until = now()->addHours(Setting::integer('otp_lockout_hours'));
+        }
+        $lockout->save();
     }
 
     /**
@@ -83,6 +138,9 @@ class Otp
         if ($consume) {
             $otp->delete();
         }
+
+        // signing in with a code clears the count of codes sent
+        OtpLockout::query()->where('channel', $channel)->where('destination', $destination)->delete();
 
         return true;
     }

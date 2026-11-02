@@ -83,6 +83,10 @@ class ListingController extends Controller
             throw ValidationException::withMessages(['apk' => ['Upload the APK file before submitting for review.']]);
         }
 
+        if ($listing->price > 0 && ! $request->user()->payoutAccount()->exists()) {
+            throw ValidationException::withMessages(['payout_account' => ['برای فروش اپ پولی، ابتدا اطلاعات حساب بانکی (شماره شبا) را در بخش «اطلاعات تسویه» ثبت کنید.']]);
+        }
+
         $listing->submitForReview($answers);
 
         return new ListingResource($listing);

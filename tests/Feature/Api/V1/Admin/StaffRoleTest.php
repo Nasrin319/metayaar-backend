@@ -28,7 +28,7 @@ class StaffRoleTest extends TestCase
 
         $this->getJson(route('v1.admin.permissions.index'))
             ->assertOk()
-            ->assertJsonPath('data', ['listings.review', 'users.manage', 'store.curate', 'staff.manage', 'statistics.view']);
+            ->assertJsonPath('data', ['listings.review', 'users.manage', 'store.curate', 'staff.manage', 'statistics.view', 'settings.manage', 'finance.manage']);
 
         $roleId = $this->postJson(route('v1.admin.roles.store'), ['name' => 'Support', 'permissions' => ['users.manage']])
             ->assertCreated()

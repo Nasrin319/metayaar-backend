@@ -6,6 +6,7 @@ use App\Enums\OtpChannel;
 use App\Enums\OtpPurpose;
 use App\Enums\Role;
 use App\Models\OtpCode;
+use App\Models\OtpLockout;
 use App\Models\User;
 use App\Notifications\OtpCodeNotification;
 use App\Support\Otp;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
+use RuntimeException;
 use Tests\TestCase;
 
 class OtpTest extends TestCase
@@ -108,16 +110,59 @@ class OtpTest extends TestCase
         Notification::assertNothingSent();
     }
 
-    public function test_login_codes_only_go_to_accounts_but_respond_the_same(): void
+    public function test_login_codes_only_go_to_accounts_and_say_so_otherwise(): void
     {
         Notification::fake();
         User::factory()->create(['email' => 'jane@example.com']);
 
-        $this->postJson(route('v1.auth.otp.send'), ['channel' => 'email', 'destination' => 'nobody@example.com', 'purpose' => 'login'])->assertOk();
+        $this->postJson(route('v1.auth.otp.send'), ['channel' => 'email', 'destination' => 'nobody@example.com', 'purpose' => 'login'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['destination' => 'حسابی با این ایمیل پیدا نشد. ابتدا ثبت‌نام کنید.']);
         Notification::assertNothingSent();
 
         $this->postJson(route('v1.auth.otp.send'), ['channel' => 'email', 'destination' => 'jane@example.com', 'purpose' => 'login'])->assertOk();
         Notification::assertSentOnDemandTimes(OtpCodeNotification::class, 1);
+    }
+
+    public function test_a_login_code_to_a_mobile_no_account_has_is_refused(): void
+    {
+        $this->postJson(route('v1.auth.otp.send'), ['channel' => 'mobile', 'destination' => '09120000000', 'purpose' => 'login'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['destination' => 'این شماره موبایل برای هیچ حسابی ثبت نشده است. با ایمیل وارد شوید و شماره را در صفحه حساب اضافه کنید، یا ثبت‌نام کنید.']);
+
+        $this->assertSame([], $this->sentSms);
+        $this->assertDatabaseCount('otp_codes', 0);
+    }
+
+    public function test_disabled_accounts_get_no_login_code(): void
+    {
+        User::factory()->create(['mobile' => '09123456789', 'disabled_at' => now()]);
+
+        $this->postJson(route('v1.auth.otp.send'), ['channel' => 'mobile', 'destination' => '09123456789', 'purpose' => 'login'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['destination' => User::DISABLED_MESSAGE]);
+
+        $this->assertSame([], $this->sentSms);
+    }
+
+    public function test_when_the_sms_panel_fails_the_user_is_told_and_no_code_is_kept(): void
+    {
+        $this->app->instance(SmsSender::class, new class implements SmsSender
+        {
+            public function sendOtp(string $mobile, string $code): void
+            {
+                throw new RuntimeException('MsgWay rejected the SMS: timeout');
+            }
+        });
+        User::factory()->create(['mobile' => '09123456789']);
+
+        $this->postJson(route('v1.auth.otp.send'), ['channel' => 'mobile', 'destination' => '09123456789', 'purpose' => 'login'])
+            ->assertStatus(503)
+            ->assertJsonPath('errors.destination.0', 'ارسال پیامک انجام نشد. چند دقیقه دیگر دوباره تلاش کنید یا با ایمیل وارد شوید.');
+
+        $this->assertDatabaseCount('otp_codes', 0);
+        // nothing was delivered, so the failed try doesn't count towards the lockout
+        $this->assertSame(0, (int) OtpLockout::query()->value('sends'));
     }
 
     public function test_registration_requires_valid_codes_and_verifies_email_and_mobile(): void
@@ -307,7 +352,7 @@ class OtpTest extends TestCase
     {
         Http::fake(['api.msgway.com/*' => Http::response(['status' => 'error', 'error' => ['code' => 2, 'message' => 'invalid template']], 400)]);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         (new MsgwaySmsSender('secret-key', 1))->sendOtp('09123456789', '654321');
     }
 }

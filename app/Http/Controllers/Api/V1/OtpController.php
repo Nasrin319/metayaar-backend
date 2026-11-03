@@ -6,6 +6,7 @@ use App\Enums\OtpChannel;
 use App\Enums\OtpPurpose;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Otp\SendOtpRequest;
+use App\Models\User;
 use App\Support\Otp;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
@@ -16,9 +17,9 @@ use Illuminate\Validation\ValidationException;
 class OtpController extends Controller
 {
     /**
-     * Send a code. Signup codes only go to addresses and numbers without an account. Login and reset
-     * codes only go to ones with an account, but the response is the same either way, so the endpoint
-     * can't be used to find out who is registered.
+     * Send a code. Signup codes only go to addresses and numbers without an account, and login codes
+     * only to ones with an account; both say so when that's not the case. Password reset codes only
+     * go to accounts too, but answer the same either way.
      */
     public function send(SendOtpRequest $request, Otp $otp): JsonResponse
     {
@@ -31,6 +32,18 @@ class OtpController extends Controller
                     ? 'حسابی با این ایمیل وجود دارد.'
                     : 'حسابی با این شماره موبایل وجود دارد.'],
             ]);
+        }
+
+        if ($purpose === OtpPurpose::Login && ! $account) {
+            throw ValidationException::withMessages([
+                'destination' => [$request->channel() === OtpChannel::Email
+                    ? 'حسابی با این ایمیل پیدا نشد. ابتدا ثبت‌نام کنید.'
+                    : 'این شماره موبایل برای هیچ حسابی ثبت نشده است. با ایمیل وارد شوید و شماره را در صفحه حساب اضافه کنید، یا ثبت‌نام کنید.'],
+            ]);
+        }
+
+        if ($purpose === OtpPurpose::Login && $account->isDisabled()) {
+            throw ValidationException::withMessages(['destination' => [User::DISABLED_MESSAGE]]);
         }
 
         if ($purpose === OtpPurpose::Signup || $account) {

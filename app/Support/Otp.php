@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * Sends and checks one-time codes. A destination has at most one live code per purpose; sending a new
@@ -36,7 +37,7 @@ class Otp
 
     /**
      * Send a new code. Throws a 429 validation error, keyed by $errorKey, when one was just sent or
-     * the destination is locked out.
+     * the destination is locked out, and a 503 one when the SMS panel or mail server fails.
      */
     public function send(OtpChannel $channel, string $destination, OtpPurpose $purpose, string $errorKey = 'destination'): void
     {
@@ -60,7 +61,7 @@ class Otp
         $code = str_pad((string) random_int(0, 10 ** self::LENGTH - 1), self::LENGTH, '0', STR_PAD_LEFT);
 
         $this->query($channel, $destination, $purpose)->delete();
-        OtpCode::create([
+        $otp = OtpCode::create([
             'channel' => $channel,
             'destination' => $destination,
             'purpose' => $purpose,
@@ -68,11 +69,24 @@ class Otp
             'expires_at' => now()->addMinutes(self::TTL_MINUTES),
         ]);
 
-        match ($channel) {
-            OtpChannel::Email => Notification::route('mail', $destination)
-                ->notify(new OtpCodeNotification($code, $purpose, self::TTL_MINUTES)),
-            OtpChannel::Mobile => $this->sms->sendOtp($destination, $code),
-        };
+        try {
+            match ($channel) {
+                OtpChannel::Email => Notification::route('mail', $destination)
+                    ->notify(new OtpCodeNotification($code, $purpose, self::TTL_MINUTES)),
+                OtpChannel::Mobile => $this->sms->sendOtp($destination, $code),
+            };
+        } catch (Throwable $exception) {
+            // the SMS panel or mail server refused or didn't answer: nothing reached the person, so
+            // drop the code (a retry isn't held back by the resend wait) and say so instead of "sent"
+            report($exception);
+            $otp->delete();
+
+            throw ValidationException::withMessages([
+                $errorKey => [$channel === OtpChannel::Mobile
+                    ? 'ارسال پیامک انجام نشد. چند دقیقه دیگر دوباره تلاش کنید یا با ایمیل وارد شوید.'
+                    : 'ارسال ایمیل انجام نشد. چند دقیقه دیگر دوباره تلاش کنید.'],
+            ])->status(503);
+        }
 
         $this->countSend($lockout);
     }

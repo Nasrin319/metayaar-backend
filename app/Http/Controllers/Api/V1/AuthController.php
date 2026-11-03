@@ -84,6 +84,7 @@ class AuthController extends Controller
             ]);
         }
 
+        $this->ensureNotDisabled($user, 'email');
         $this->ensureHasRole($user, $role, 'email');
 
         return $this->tokenResponse($user, $role, $request->input('device_name'));
@@ -101,6 +102,7 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['code' => ['کد واردشده نادرست یا منقضی است.']]);
         }
 
+        $this->ensureNotDisabled($user, 'destination');
         $this->ensureHasRole($user, $role, 'destination');
         $otp->forget($request->channel(), $request->destination(), OtpPurpose::Login);
 
@@ -199,6 +201,18 @@ class AuthController extends Controller
         if (! $user->hasRole($role->value)) {
             throw ValidationException::withMessages([
                 $errorKey => ["This account does not have the {$role->value} role."],
+            ]);
+        }
+    }
+
+    /**
+     * Refuse to sign in an account staff disabled in the admin panel.
+     */
+    private function ensureNotDisabled(User $user, string $errorKey): void
+    {
+        if ($user->isDisabled()) {
+            throw ValidationException::withMessages([
+                $errorKey => [User::DISABLED_MESSAGE],
             ]);
         }
     }

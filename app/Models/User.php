@@ -23,6 +23,9 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasAvatar, HasFactory, HasRoles, Notifiable;
 
+    /** What a disabled account is told when it tries to sign in or use the API. */
+    public const string DISABLED_MESSAGE = 'حساب کاربری شما غیرفعال شده است. برای پیگیری با پشتیبانی متایار تماس بگیرید.';
+
     /**
      * The guard spatie/laravel-permission stores roles under, shared by session and Sanctum token auth.
      */
@@ -98,6 +101,36 @@ class User extends Authenticatable
         return $this->hasMany(WalletTransaction::class);
     }
 
+    /**
+     * Staff disabled the account in the admin panel: it cannot sign in or use the API.
+     */
+    public function isDisabled(): bool
+    {
+        return $this->disabled_at !== null;
+    }
+
+    /**
+     * Turn the account off and sign it out everywhere (website, desktop app, headset app).
+     */
+    public function disable(): void
+    {
+        $this->forceFill(['disabled_at' => now()])->save();
+        $this->tokens()->delete();
+    }
+
+    public function enable(): void
+    {
+        $this->forceFill(['disabled_at' => null])->save();
+    }
+
+    /**
+     * @return HasMany<Comment, $this>
+     */
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class);
+    }
+
     public function hasPurchased(Listing $listing): bool
     {
         return $this->purchases()->whereBelongsTo($listing)->exists();
@@ -115,6 +148,7 @@ class User extends Authenticatable
             'wallet_balance' => 'integer',
             'email_verified_at' => 'datetime',
             'mobile_verified_at' => 'datetime',
+            'disabled_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

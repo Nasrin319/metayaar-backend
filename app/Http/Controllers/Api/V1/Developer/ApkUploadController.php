@@ -75,7 +75,7 @@ class ApkUploadController extends Controller
             }
 
             if ($apkUpload->received_bytes + $chunk->getSize() > $apkUpload->size) {
-                throw ValidationException::withMessages(['chunk' => ['The chunk goes past the declared file size.']]);
+                throw ValidationException::withMessages(['chunk' => ['این بخش از فایل از حجم اعلام‌شده بیشتر است.']]);
             }
 
             $target = fopen(Storage::disk('apks')->path($apkUpload->partialPath()), 'ab');
@@ -101,7 +101,7 @@ class ApkUploadController extends Controller
         Gate::authorize('update', $listing);
 
         if (! $apkUpload->isComplete()) {
-            throw ValidationException::withMessages(['chunk' => ['The upload is not complete yet.']]);
+            throw ValidationException::withMessages(['chunk' => ['بارگذاری فایل هنوز کامل نشده است.']]);
         }
 
         $disk = Storage::disk('apks');
@@ -110,7 +110,7 @@ class ApkUploadController extends Controller
         if (filesize($partialPath) !== $apkUpload->size || ! $this->isZipArchive($partialPath)) {
             $apkUpload->delete();
 
-            throw ValidationException::withMessages(['chunk' => ['The uploaded file is not a valid APK.']]);
+            throw ValidationException::withMessages(['chunk' => ['فایل بارگذاری‌شده یک APK معتبر نیست.']]);
         }
 
         $path = "listings/{$listing->id}/".Str::uuid().'.apk';

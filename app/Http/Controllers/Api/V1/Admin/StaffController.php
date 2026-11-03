@@ -44,7 +44,7 @@ class StaffController extends Controller
         $roles = $request->collect('roles');
 
         if ($admin->is($request->user()) && ! $roles->contains(StaffRole::Admin->value)) {
-            throw ValidationException::withMessages(['roles' => ['You cannot remove your own admin role.']]);
+            throw ValidationException::withMessages(['roles' => ['نمی‌توانید نقش مدیر را از حساب خودتان بردارید.']]);
         }
 
         DB::transaction(function () use ($request, $admin, $roles): void {
@@ -63,7 +63,7 @@ class StaffController extends Controller
     public function destroy(Request $request, Admin $admin): Response
     {
         if ($admin->is($request->user())) {
-            throw ValidationException::withMessages(['admin' => ['You cannot delete your own account.']]);
+            throw ValidationException::withMessages(['admin' => ['نمی‌توانید حساب خودتان را حذف کنید.']]);
         }
 
         DB::transaction(function () use ($admin): void {

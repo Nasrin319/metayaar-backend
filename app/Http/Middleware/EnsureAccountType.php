@@ -25,6 +25,9 @@ class EnsureAccountType
 
         abort_unless($request->user() instanceof $class, 403, 'This account cannot use this endpoint.');
 
+        // disabling revokes the account's tokens; this is the second line in case one slips through
+        abort_if($request->user() instanceof User && $request->user()->isDisabled(), 401, User::DISABLED_MESSAGE);
+
         return $next($request);
     }
 }

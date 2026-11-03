@@ -181,6 +181,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::middleware('permission:'.Permission::ManageUsers->value)->controller(UserController::class)->group(function () {
                 Route::get('users', 'index')->name('users.index');
                 Route::put('users/{user}/roles', 'updateRoles')->name('users.roles');
+                Route::post('users/{user}/disable', 'disable')->name('users.disable');
+                Route::post('users/{user}/enable', 'enable')->name('users.enable');
+                Route::delete('users/{user}', 'destroy')->name('users.destroy');
             });
 
             Route::middleware('permission:'.Permission::ViewStatistics->value)->controller(AdminDownloadController::class)->group(function () {

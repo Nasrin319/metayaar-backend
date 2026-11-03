@@ -79,11 +79,11 @@ class ListingController extends Controller
         ])['answers'] ?? [];
 
         if ($listing->type === ListingType::Apk && ! $listing->package_name) {
-            throw ValidationException::withMessages(['package_name' => ['Set the package name before submitting for review.']]);
+            throw ValidationException::withMessages(['package_name' => ['پیش از ارسال برای بررسی، نام بسته (package name) را وارد کنید.']]);
         }
 
         if ($listing->type === ListingType::Apk && ! $listing->hasApk()) {
-            throw ValidationException::withMessages(['apk' => ['Upload the APK file before submitting for review.']]);
+            throw ValidationException::withMessages(['apk' => ['پیش از ارسال برای بررسی، فایل APK را بارگذاری کنید.']]);
         }
 
         if ($listing->price > 0 && ! $request->user()->payoutAccount()->exists()) {

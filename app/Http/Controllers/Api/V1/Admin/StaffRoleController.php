@@ -79,7 +79,7 @@ class StaffRoleController extends Controller
         abort_unless($role->guard_name === Admin::GUARD, 404);
 
         if ($role->name === StaffRole::Admin->value) {
-            throw ValidationException::withMessages(['name' => ['The admin role always has every permission and cannot be changed.']]);
+            throw ValidationException::withMessages(['name' => ['نقش مدیر همیشه همه دسترسی‌ها را دارد و قابل تغییر نیست.']]);
         }
     }
 }

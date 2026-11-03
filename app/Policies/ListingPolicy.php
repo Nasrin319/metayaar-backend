@@ -63,7 +63,7 @@ class ListingPolicy
         }
 
         if (! $listing->isFree() && ! $user->hasPurchased($listing)) {
-            return Response::denyWithStatus(402, 'Purchase this app to download it.');
+            return Response::denyWithStatus(402, 'برای دانلود این اپ، ابتدا آن را خریداری کنید.');
         }
 
         return Response::allow();
@@ -92,6 +92,6 @@ class ListingPolicy
 
         return $listing->status->canBeReviewed()
             ? Response::allow()
-            : Response::denyWithStatus(409, 'Only listings waiting in review can be approved or rejected.');
+            : Response::denyWithStatus(409, 'فقط اپ‌هایی که در صف بررسی هستند را می‌توان تأیید یا رد کرد.');
     }
 }

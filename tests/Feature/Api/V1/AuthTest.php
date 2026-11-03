@@ -201,6 +201,25 @@ class AuthTest extends TestCase
         $this->assertTrue($user->tokens()->first()->can("role:{$role->value}"));
     }
 
+    #[DataProvider('selfRegisterableRoles')]
+    public function test_login_token_expires_after_twelve_hours(Role $role): void
+    {
+        $this->freezeSecond();
+        $user = User::factory()->create()->assignRole($role->value);
+
+        $token = $this->postJson(route('v1.auth.login', $role->value), [
+            'email' => $user->email,
+            'password' => 'password',
+        ])->assertOk()
+            ->assertJsonPath('expires_at', now()->addHours(12)->toIso8601String())
+            ->json('token');
+
+        $this->travel(12)->hours();
+        $this->travel(1)->minute();
+
+        $this->withToken($token)->getJson(route('v1.me'))->assertUnauthorized();
+    }
+
     public function test_login_ignores_email_case_and_spaces(): void
     {
         $user = User::factory()->create(['email' => 'jane@example.com'])->assignRole(Role::Player->value);

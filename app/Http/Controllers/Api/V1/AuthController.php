@@ -208,11 +208,16 @@ class AuthController extends Controller
      */
     private function tokenResponse(User $user, Role $role, ?string $deviceName, int $status = 200): JsonResponse
     {
-        $token = $user->createToken($deviceName ?: "{$role->value}-token", ["role:{$role->value}"]);
+        $token = $user->createToken(
+            $deviceName ?: "{$role->value}-token",
+            ["role:{$role->value}"],
+            now()->addMinutes(config('sanctum.expiration')),
+        );
 
         return response()->json([
             'token' => $token->plainTextToken,
             'token_type' => 'Bearer',
+            'expires_at' => $token->accessToken->expires_at?->toIso8601String(),
             'role' => $role->value,
             'user' => new UserResource($user->load('organization')),
         ], $status);

@@ -99,7 +99,7 @@ class ListingMediaTest extends TestCase
         $this->postJson(route('v1.developer.apps.media.store', [$this->listing, 'icon']), [
             'image' => UploadedFile::fake()->image('icon.png', 64, 64),
         ])->assertUnprocessable()
-            ->assertJsonValidationErrors(['image' => 'The image field has invalid image dimensions.']);
+            ->assertJsonValidationErrors(['image' => 'ابعاد تصویر مناسب نیست.']);
     }
 
     public function test_only_images_are_accepted(): void
@@ -107,7 +107,7 @@ class ListingMediaTest extends TestCase
         $this->postJson(route('v1.developer.apps.media.store', [$this->listing, 'cover']), [
             'image' => UploadedFile::fake()->create('cover.pdf', 100, 'application/pdf'),
         ])->assertUnprocessable()
-            ->assertJsonValidationErrors(['image' => 'The image field must be an image.']);
+            ->assertJsonValidationErrors(['image' => 'تصویر باید یک تصویر باشد.']);
     }
 
     public function test_unknown_media_kinds_are_not_found(): void

@@ -4,10 +4,12 @@ use App\Enums\OtpChannel;
 use App\Enums\Permission;
 use App\Enums\Role;
 use App\Http\Controllers\Api\V1\Admin\AuthController as AdminAuthController;
+use App\Http\Controllers\Api\V1\Admin\CommentReviewController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\DownloadController as AdminDownloadController;
 use App\Http\Controllers\Api\V1\Admin\FinanceController;
 use App\Http\Controllers\Api\V1\Admin\ListingReviewController;
+use App\Http\Controllers\Api\V1\Admin\NotificationController;
 use App\Http\Controllers\Api\V1\Admin\SettingController;
 use App\Http\Controllers\Api\V1\Admin\StaffController;
 use App\Http\Controllers\Api\V1\Admin\StaffRoleController;
@@ -16,6 +18,7 @@ use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\AppAccessController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AvatarController;
+use App\Http\Controllers\Api\V1\CommentController;
 use App\Http\Controllers\Api\V1\Developer\ApkUploadController;
 use App\Http\Controllers\Api\V1\Developer\ListingController;
 use App\Http\Controllers\Api\V1\Developer\ListingDownloadController;
@@ -72,6 +75,8 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::get('apps', [StoreController::class, 'index'])->name('apps.index');
     Route::get('store-tabs', [StoreController::class, 'tabs'])->name('store-tabs.index');
     Route::get('apps/{listing:slug}', [StoreController::class, 'show'])->name('apps.show');
+    // approved comments; a bearer token, when sent, adds the viewer's own comments still waiting
+    Route::get('apps/{listing:slug}/comments', [CommentController::class, 'index'])->name('apps.comments.index');
 
     // website accounts: players and developers
     Route::middleware(['auth:sanctum', 'account:user'])->group(function () {
@@ -98,6 +103,14 @@ Route::prefix('v1')->name('v1.')->group(function () {
             ->name('me.roles.store');
 
         Route::get('apps/{listing:slug}/access', AppAccessController::class)->name('apps.access');
+
+        Route::post('apps/{listing:slug}/comments', [CommentController::class, 'store'])
+            ->middleware('throttle:5,1')
+            ->name('apps.comments.store');
+        Route::post('comments/{comment}/replies', [CommentController::class, 'reply'])
+            ->middleware('throttle:10,1')
+            ->name('comments.replies.store');
+        Route::delete('comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
 
         Route::get('apps/{listing:slug}/download', DownloadController::class)
             ->middleware('throttle:30,1')
@@ -143,12 +156,26 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::delete('me/avatar', [AdminAuthController::class, 'destroyAvatar'])->name('me.avatar.destroy');
             Route::get('dashboard', DashboardController::class)->name('dashboard');
 
+            Route::controller(NotificationController::class)->prefix('notifications')->name('notifications.')->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('unread-count', 'unreadCount')->name('unread-count');
+                Route::post('read-all', 'readAll')->name('read-all');
+                Route::post('{notification}/read', 'read')->whereUuid('notification')->name('read');
+            });
+
             Route::middleware('permission:'.Permission::ReviewListings->value)->controller(ListingReviewController::class)->group(function () {
                 Route::get('listings', 'index')->name('listings.index');
                 Route::get('listings/{listing}', 'show')->name('listings.show');
                 Route::post('listings/{listing}/approve', 'approve')->name('listings.approve');
                 Route::post('listings/{listing}/reject', 'reject')->name('listings.reject');
                 Route::get('apps/{listing:slug}/download', 'download')->name('apps.download');
+            });
+
+            Route::middleware('permission:'.Permission::ModerateComments->value)->controller(CommentReviewController::class)->group(function () {
+                Route::get('comments', 'index')->name('comments.index');
+                Route::post('comments/{comment}/approve', 'approve')->name('comments.approve');
+                Route::post('comments/{comment}/reject', 'reject')->name('comments.reject');
+                Route::delete('comments/{comment}', 'destroy')->name('comments.destroy');
             });
 
             Route::middleware('permission:'.Permission::ManageUsers->value)->controller(UserController::class)->group(function () {

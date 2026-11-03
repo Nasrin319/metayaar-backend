@@ -36,7 +36,7 @@ class StaffTest extends TestCase
         ])
             ->assertCreated()
             ->assertJsonPath('data.roles', ['moderator', 'curator'])
-            ->assertJsonPath('data.permissions', ['listings.review', 'store.curate'])
+            ->assertJsonPath('data.permissions', ['comments.moderate', 'listings.review', 'store.curate'])
             ->json('data.id');
 
         $sara = Admin::find($id);

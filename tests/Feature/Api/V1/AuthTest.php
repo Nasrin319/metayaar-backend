@@ -251,7 +251,18 @@ class AuthTest extends TestCase
             'email' => $user->email,
             'password' => 'wrong-password',
         ])->assertUnprocessable()
-            ->assertJsonValidationErrors('email');
+            ->assertJsonValidationErrors(['email' => 'ایمیل یا رمز عبور اشتباه است.']);
+    }
+
+    public function test_login_validation_errors_are_in_persian(): void
+    {
+        $this->postJson(route('v1.auth.login', Role::Player->value), [
+            'email' => 'not-an-email',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'email' => 'ایمیل باید یک ایمیل معتبر باشد.',
+                'password' => 'وارد کردن رمز عبور الزامی است.',
+            ]);
     }
 
     public function test_authenticated_user_can_fetch_profile_and_logout(): void

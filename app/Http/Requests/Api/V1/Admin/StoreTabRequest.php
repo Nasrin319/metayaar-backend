@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api\V1\Admin;
 
 use App\Enums\StoreTabRule;
+use App\Rules\PlainText;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
@@ -36,7 +37,7 @@ class StoreTabRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'label' => ['required', 'string', 'max:40'],
+            'label' => ['required', 'string', 'max:40', new PlainText],
             'slug' => ['nullable', 'string', 'max:50', Rule::unique('store_tabs')->ignore($this->route('storeTab'))],
             'rule' => ['required', Rule::enum(StoreTabRule::class)],
             'value' => [

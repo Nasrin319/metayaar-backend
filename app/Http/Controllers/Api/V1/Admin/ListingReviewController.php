@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Admin\RejectListingRequest;
 use App\Http\Resources\ListingResource;
 use App\Models\Listing;
+use App\Support\StaffNotifications;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Gate;
@@ -51,6 +52,7 @@ class ListingReviewController extends Controller
         Gate::authorize('review', $listing);
 
         $listing->approve($request->user());
+        StaffNotifications::resolve('listing_id', $listing->id);
 
         return new ListingResource($listing->load('developer'));
     }
@@ -60,6 +62,7 @@ class ListingReviewController extends Controller
         Gate::authorize('review', $listing);
 
         $listing->reject($request->user(), $request->string('reason'));
+        StaffNotifications::resolve('listing_id', $listing->id);
 
         return new ListingResource($listing->load('developer'));
     }

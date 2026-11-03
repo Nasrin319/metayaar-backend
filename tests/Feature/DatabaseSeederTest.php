@@ -38,4 +38,23 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame('Edited by admin', StoreTab::firstWhere('slug', 'free')->label);
         $this->assertSame($staffCount, Admin::count());
     }
+
+    public function test_a_permission_added_in_a_release_reaches_existing_starting_roles(): void
+    {
+        $this->seed();
+
+        // a server from before comment moderation existed: the permission is new, and an admin had
+        // taken listings.review away from moderators
+        Permission::findByName('comments.moderate', Admin::GUARD)->delete();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        Role::findByName('moderator', Admin::GUARD)->syncPermissions(['store.curate']);
+
+        $this->seed();
+
+        $this->assertEqualsCanonicalizing(
+            ['store.curate', 'comments.moderate'],
+            Role::findByName('moderator', Admin::GUARD)->permissions->pluck('name')->all(),
+        );
+        $this->assertFalse(Role::findByName('curator', Admin::GUARD)->hasPermissionTo('comments.moderate'));
+    }
 }

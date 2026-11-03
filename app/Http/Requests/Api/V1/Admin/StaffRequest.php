@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api\V1\Admin;
 
 use App\Models\Admin;
+use App\Rules\PlainText;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -29,7 +30,7 @@ class StaffRequest extends FormRequest
         $editing = $this->route('admin') !== null;
 
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', new PlainText],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('admins')->ignore($this->route('admin'))],
             'password' => [$editing ? 'nullable' : 'required', 'string', Password::defaults()],
             'roles' => ['present', 'array'],

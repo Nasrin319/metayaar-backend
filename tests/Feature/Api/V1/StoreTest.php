@@ -88,7 +88,7 @@ class StoreTest extends TestCase
     {
         $this->getJson(route('v1.apps.index', ['sort' => 'random']))
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['sort' => 'The selected sort is invalid.']);
+            ->assertJsonValidationErrors(['sort' => 'مرتب‌سازی انتخاب‌شده نامعتبر است.']);
     }
 
     public function test_guests_can_open_a_published_listing_by_slug(): void

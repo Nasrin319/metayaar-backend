@@ -6,6 +6,7 @@ use App\Enums\Comfort;
 use App\Enums\Device;
 use App\Enums\LinkType;
 use App\Enums\ListingType;
+use App\Rules\PlainText;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -28,11 +29,11 @@ class ListingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => ['required', 'string', 'max:120'],
+            'title' => ['required', 'string', 'max:120', new PlainText],
             'type' => ['required', Rule::enum(ListingType::class)],
-            'tagline' => ['nullable', 'string', 'max:160'],
-            'description' => ['nullable', 'string', 'max:10000'],
-            'category' => ['nullable', 'string', 'max:50'],
+            'tagline' => ['nullable', 'string', 'max:160', new PlainText],
+            'description' => ['nullable', 'string', 'max:10000', new PlainText],
+            'category' => ['nullable', 'string', 'max:50', new PlainText],
             'price' => ['nullable', 'integer', 'min:0', 'max:100000000'],
             // An APK draft may start without its package name; it's required when submitting for review.
             'package_name' => [
@@ -48,13 +49,13 @@ class ListingRequest extends FormRequest
                 'max:2048',
             ],
             'version_code' => ['nullable', 'integer', 'min:1', 'max:2100000000'],
-            'version_name' => ['nullable', 'string', 'max:50'],
+            'version_name' => ['nullable', 'string', 'max:50', new PlainText],
             'seated' => ['sometimes', 'boolean'],
             'comfort' => ['sometimes', Rule::enum(Comfort::class)],
             'supported_devices' => ['nullable', 'array'],
             'supported_devices.*' => ['distinct', Rule::enum(Device::class)],
             'tags' => ['nullable', 'array', 'max:20'],
-            'tags.*' => ['string', 'distinct', 'max:30'],
+            'tags.*' => ['string', 'distinct', 'max:30', new PlainText],
             'links' => ['nullable', 'array', 'max:20'],
             'links.*.type' => ['required', Rule::enum(LinkType::class)],
             'links.*.url' => ['required', 'url:https,http', 'max:2048'],

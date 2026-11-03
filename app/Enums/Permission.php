@@ -9,6 +9,7 @@ namespace App\Enums;
 enum Permission: string
 {
     case ReviewListings = 'listings.review';
+    case ModerateComments = 'comments.moderate';
     case ManageUsers = 'users.manage';
     case CurateStore = 'store.curate';
     case ManageStaff = 'staff.manage';

@@ -16,7 +16,8 @@ class RoleSeeder extends Seeder
     /**
      * Create the website roles, every staff permission and the starting staff roles. Staff roles that
      * already exist keep the permissions admins gave them in the panel; only "admin" is reset to
-     * every permission, so newly added permissions reach it.
+     * every permission. A permission created by this run (added in a new release) is also given to
+     * the existing starting roles that include it by default.
      */
     public function run(): void
     {
@@ -26,8 +27,11 @@ class RoleSeeder extends Seeder
             RoleModel::findOrCreate($role->value, 'web');
         }
 
+        $addedPermissions = [];
         foreach (Permission::cases() as $permission) {
-            PermissionModel::findOrCreate($permission->value, Admin::GUARD);
+            if (PermissionModel::findOrCreate($permission->value, Admin::GUARD)->wasRecentlyCreated) {
+                $addedPermissions[] = $permission;
+            }
         }
 
         // DatabaseSeeder runs without model events, so creating a permission does not refresh the cache itself.
@@ -40,6 +44,12 @@ class RoleSeeder extends Seeder
 
             if ($isNew || $staffRole === StaffRole::Admin) {
                 $role->syncPermissions(array_map(fn (Permission $permission) => $permission->value, $staffRole->defaultPermissions()));
+            } else {
+                // a permission added in a new release reaches the existing roles that start with it
+                $role->givePermissionTo(array_map(
+                    fn (Permission $permission) => $permission->value,
+                    array_filter($addedPermissions, fn (Permission $permission) => in_array($permission, $staffRole->defaultPermissions(), true)),
+                ));
             }
         }
     }

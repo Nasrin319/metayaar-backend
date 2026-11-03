@@ -279,6 +279,16 @@ class Listing extends Model
     }
 
     /**
+     * Players' comments and the developer's replies, in every status.
+     *
+     * @return HasMany<Comment, $this>
+     */
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class);
+    }
+
+    /**
      * Publish the listing in the store.
      */
     public function approve(Admin $reviewer): void

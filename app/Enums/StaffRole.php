@@ -22,7 +22,7 @@ enum StaffRole: string
     {
         return match ($this) {
             self::Admin => Permission::cases(),
-            self::Moderator => [Permission::ReviewListings],
+            self::Moderator => [Permission::ReviewListings, Permission::ModerateComments],
             self::Curator => [Permission::CurateStore],
         };
     }

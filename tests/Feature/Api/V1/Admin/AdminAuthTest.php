@@ -29,7 +29,7 @@ class AdminAuthTest extends TestCase
         $token = $this->postJson(route('v1.admin.auth.login'), ['email' => 'mod@metayaar.test', 'password' => 'password'])
             ->assertOk()
             ->assertJsonPath('admin.roles', ['moderator'])
-            ->assertJsonPath('admin.permissions', ['listings.review'])
+            ->assertJsonPath('admin.permissions', ['comments.moderate', 'listings.review'])
             ->json('token');
         $this->assertNotNull($admin->fresh()->last_login_at);
 

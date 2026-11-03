@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Metayaar Deploy Guide</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,600&display=swap">
+<style>
+/* Layout: sticky table of contents on the left, one reading column on the right; three parts (server, desktop downloads, glasses) */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --fg: #1b2230;
+  --muted: #5a6475;
+  --line: #dde1e8;
+  --accent: #2f55d4;
+  --accent-soft: #e7ecfc;
+  --code-bg: #eef1f6;
+  --warn: #9a5b00;
+  --warn-soft: #fdf3e2;
+  --ok: #1f7a4d;
+  --ok-soft: #e4f4ec;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151c; --surface: #181d27; --fg: #e3e7ee; --muted: #9aa4b5; --line: #2a3140;
+    --accent: #8aa6ff; --accent-soft: #1e2847; --code-bg: #0c1016;
+    --warn: #f0b45c; --warn-soft: #2e2414; --ok: #6fd3a0; --ok-soft: #13291f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151c; --surface: #181d27; --fg: #e3e7ee; --muted: #9aa4b5; --line: #2a3140;
+  --accent: #8aa6ff; --accent-soft: #1e2847; --code-bg: #0c1016;
+  --warn: #f0b45c; --warn-soft: #2e2414; --ok: #6fd3a0; --ok-soft: #13291f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.65;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 80px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 48px; }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; max-height: calc(100vh - 48px); overflow-y: auto; font-size: 14px; }
+nav.toc .part { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 20px 0 6px; }
+nav.toc .part:first-child { margin-top: 0; }
+nav.toc a { display: block; color: var(--fg); text-decoration: none; padding: 3px 0 3px 10px; border-left: 2px solid var(--line); }
+nav.toc a:hover, nav.toc a:focus-visible { border-left-color: var(--accent); color: var(--accent); outline: none; }
+main { min-width: 0; max-width: 780px; }
+header.top h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(30px, 5vw, 44px); line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+header.top p { color: var(--muted); margin: 0 0 16px; max-width: 64ch; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.chip { font-family: var(--font-mono); font-size: 12px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--surface); }
+.part-head { margin: 64px 0 8px; padding-top: 24px; border-top: 1px solid var(--line); }
+.part-head .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+.part-head h2 { font-family: var(--font-display); font-weight: 600; font-size: 30px; margin: 4px 0 6px; text-wrap: balance; }
+.part-head p { color: var(--muted); margin: 0; }
+h3 { font-size: 20px; margin: 40px 0 10px; text-wrap: balance; scroll-margin-top: 20px; }
+h4 { font-size: 15px; margin: 22px 0 6px; }
+p, li { max-width: 68ch; }
+a { color: var(--accent); }
+code { font-family: var(--font-mono); font-size: .88em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.code { position: relative; margin: 10px 0 16px; }
+.code pre { margin: 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.6; }
+.code pre .c { color: var(--muted); }
+.code .file { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.copy { position: absolute; top: 8px; right: 8px; font: 500 12px var(--font-body); color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px; cursor: pointer; }
+.code .file + pre + .copy, .code .file ~ .copy { top: 28px; }
+.copy:hover, .copy:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+ol.steps { padding-left: 22px; }
+ol.steps > li { margin-bottom: 10px; }
+.note, .warn, .ok { border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 15px; }
+.note { background: var(--accent-soft); }
+.warn { background: var(--warn-soft); }
+.warn strong:first-child { color: var(--warn); }
+.ok { background: var(--ok-soft); }
+.ok strong:first-child { color: var(--ok); }
+.table { overflow-x: auto; margin: 12px 0 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; background: var(--code-bg); }
+tr:last-child td { border-bottom: 0; }
+td code { white-space: nowrap; }
+.os-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 14px 0; }
+.os { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.os h4 { margin: 0 0 6px; }
+.os p { font-size: 14px; margin: 0 0 8px; color: var(--muted); }
+.os ul { margin: 0; padding-left: 18px; font-size: 14px; }
+.pill { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 1px 7px; border-radius: 999px; vertical-align: 2px; }
+.pill.yes { background: var(--ok-soft); color: var(--ok); }
+.pill.no { background: var(--warn-soft); color: var(--warn); }
+.diagram pre { font-size: 12.5px; }
+@media (max-width: 880px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  nav.toc { position: static; max-height: none; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; background: var(--surface); columns: 2; column-gap: 20px; }
+  nav.toc .part { break-after: avoid; }
+  .os-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 480px) { nav.toc { columns: 1; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+html { scroll-behavior: smooth; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <div class="part">Part 1 · Server</div>
+  <a href="#overview">How it fits together</a>
+  <a href="#requirements">Before you start</a>
+  <a href="#docker">Install Docker</a>
+  <a href="#config">Config files</a>
+  <a href="#run">Build and start</a>
+  <a href="#admin">First admin</a>
+  <a href="#ssl">HTTPS certificate</a>
+  <a href="#arvan">ArvanCloud CDN</a>
+  <a href="#verify">Check it works</a>
+  <a href="#update">Update and backup</a>
+  <div class="part">Part 2 · Desktop app</div>
+  <a href="#downloads">How downloads work</a>
+  <a href="#build-desktop">Build per OS</a>
+  <a href="#publish-desktop">Put files on the server</a>
+  <a href="#install-desktop">What users do</a>
+  <div class="part">Part 3 · Glasses</div>
+  <a href="#why-adb">Why ADB works</a>
+  <a href="#prep-glasses">Prepare the glasses</a>
+  <a href="#prep-pc">Prepare the computer</a>
+  <a href="#install-metayaar">Install the Metayaar app</a>
+  <a href="#install-apps">Install store apps</a>
+  <a href="#launch">Open apps on the glasses</a>
+  <a href="#roles">Who can install what</a>
+  <a href="#troubleshoot">Troubleshooting</a>
+</nav>
+
+<main>
+<header class="top">
+  <h1>Deploying Metayaar and installing it on every device</h1>
+  <p>This guide puts the store, admin panel and API on a server, publishes the desktop app for Windows, macOS and Linux, and installs the Android app on glasses that block APK installs on the device itself.</p>
+  <div class="chips">
+    <span class="chip">Docker Compose</span><span class="chip">PHP 8.4 · Laravel</span><span class="chip">PostgreSQL 17</span><span class="chip">Next.js</span><span class="chip">Electron</span><span class="chip">adb</span>
+  </div>
+  <p style="font-size:14px">Examples use <code>metayaar.com</code>, <code>admin.metayaar.com</code> and <code>api.metayaar.com</code>, and the project folder <code>/var/www/ecoshaar/metayaar</code>. Replace them with yours.</p>
+</header>
+
+<!-- ============ PART 1 ============ -->
+<div class="part-head">
+  <div class="eyebrow">Part 1</div>
+  <h2>Deploy the server</h2>
+  <p>Everything runs from <code>compose.yaml</code> in the project root. The server only needs Docker; you don't install PHP, Node, PostgreSQL or nginx yourself.</p>
+</div>
+
+<h3 id="overview">How it fits together</h3>
+<div class="code diagram"><pre>                internet (browser, glasses app, desktop app)
+                          │ 80 / 443
+                     ┌────┴────┐
+                     │  nginx  │── /desktop/*, /android/*  (installer files, mounted from website/public)
+                     └┬───┬───┬┘── /storage/*             (uploaded images and APKs)
+       metayaar.com   │   │   │   api.metayaar.com
+              ┌───────┘   │   └────────┐
+         website:3000  admin:3001   api:9000 (PHP-FPM) ── scheduler, queue
+              └─────┬─────┘              │
+                    └─ http://nginx:8080/api/v1 (internal only)
+                                         │
+                                    db:5432 (PostgreSQL)</pre></div>
+<div class="table"><table>
+  <thead><tr><th>Service</th><th>Job</th><th>Keeps data in</th></tr></thead>
+  <tbody>
+    <tr><td><code>nginx</code></td><td>The only service with public ports (80, 443). Serves the three domains, SSL and the installer downloads.</td><td>—</td></tr>
+    <tr><td><code>website</code></td><td>The store (Next.js)</td><td>—</td></tr>
+    <tr><td><code>admin</code></td><td>The admin panel (Next.js)</td><td>—</td></tr>
+    <tr><td><code>api</code></td><td>Laravel. Runs migrations and <code>RoleSeeder</code> on every start.</td><td><code>storage</code> volume</td></tr>
+    <tr><td><code>scheduler</code>, <code>queue</code></td><td>Scheduled tasks and background jobs</td><td><code>storage</code> volume</td></tr>
+    <tr><td><code>db</code></td><td>PostgreSQL 17</td><td><code>pgdata</code> volume</td></tr>
+    <tr><td><code>certbot</code></td><td>Renews the Let's Encrypt certificate every 12 hours</td><td><code>letsencrypt</code> volume</td></tr>
+  </tbody>
+</table></div>
+
+<h3 id="requirements">Before you start</h3>
+<ul>
+  <li><strong>Server:</strong> Ubuntu 24.04, 2 CPU cores and 4 GB RAM at minimum (8 GB recommended, because building Next.js uses a lot of memory), 40 GB disk or more.</li>
+  <li><strong>DNS:</strong> A records for <code>metayaar.com</code>, <code>www.metayaar.com</code>, <code>admin.metayaar.com</code> and <code>api.metayaar.com</code> pointing to the server IP.</li>
+  <li><strong>Firewall:</strong> open only ports 22, 80 and 443.</li>
+  <li><strong>Accounts:</strong> a MsgWay API key and OTP template ID for SMS, and SMTP details for email.</li>
+</ul>
+<div class="warn"><strong>Don't add ports.</strong> Docker opens published ports directly in iptables, and ufw does not block them. Only nginx publishes ports. Port 8080 is bound to <code>127.0.0.1</code> so the website build can reach the API; never publish the database or Next.js.</div>
+
+<h3 id="docker">Install Docker and get the code</h3>
+<div class="code"><pre>sudo apt update
+sudo apt install -y docker.io docker-compose-v2 git
+sudo usermod -aG docker $USER     <span class="c"># log out and back in once</span>
+docker compose version</pre><button class="copy" type="button">Copy</button></div>
+<p>For a server in Iran, if pulling images from Docker Hub fails, add a registry mirror:</p>
+<div class="code"><pre>sudo tee /etc/docker/daemon.json &lt;&lt;'JSON'
+{ "registry-mirrors": ["https://docker.arvancloud.ir"] }
+JSON
+sudo systemctl restart docker</pre><button class="copy" type="button">Copy</button></div>
+<p>If the server has 4 GB of RAM or less, add a 4 GB swap file so the build doesn't get killed:</p>
+<div class="code"><pre>sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab</pre><button class="copy" type="button">Copy</button></div>
+<p>Then clone the repository. The folders <code>back</code>, <code>website</code>, <code>admin</code>, <code>docker</code> and the file <code>compose.yaml</code> must be in the root.</p>
+<div class="code"><pre>sudo mkdir -p /var/www/ecoshaar/metayaar
+sudo chown $USER: /var/www/ecoshaar/metayaar
+cd /var/www/ecoshaar/metayaar
+git clone &lt;repository-url&gt; .</pre><button class="copy" type="button">Copy</button></div>
+
+<h3 id="config">Config files</h3>
+<h4>1. Docker settings (project root)</h4>
+<div class="code"><div class="file">/var/www/ecoshaar/metayaar/.env  ← cp docker.env.example .env</div><pre>STORE_DOMAIN=metayaar.com
+ADMIN_DOMAIN=admin.metayaar.com
+API_DOMAIN=api.metayaar.com
+DB_DATABASE=metayaar
+DB_USERNAME=metayaar
+DB_PASSWORD=<span class="c">long-random-password   # openssl rand -base64 32</span>
+<span class="c"># Alpine package mirror for the build; leave empty outside Iran</span>
+ALPINE_MIRROR=https://mirror.arvancloud.ir/alpine</pre><button class="copy" type="button">Copy</button></div>
+
+<h4>2. Laravel settings</h4>
+<p><code>compose.yaml</code> already sets the database, <code>APP_ENV</code>, <code>APP_DEBUG</code>, logging and <code>PUBLIC_STORAGE_URL</code>. Set the rest:</p>
+<div class="code"><div class="file">back/.env  ← cp back/.env.example back/.env</div><pre>APP_NAME=Metayaar
+APP_KEY=                        <span class="c"># generated in the next step</span>
+APP_URL=https://api.metayaar.com
+FRONTEND_URL=https://metayaar.com
+SESSION_DRIVER=database
+QUEUE_CONNECTION=database
+CACHE_STORE=database
+
+<span class="c"># Login tokens expire after this many minutes (720 = 12 hours) for all users</span>
+SANCTUM_EXPIRATION=720
+
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.example.com
+MAIL_PORT=587
+MAIL_USERNAME=...
+MAIL_PASSWORD=...
+MAIL_FROM_ADDRESS=no-reply@metayaar.com
+MAIL_FROM_NAME="Metayaar"
+
+SMS_DRIVER=msgway
+MSGWAY_API_KEY=...
+MSGWAY_OTP_TEMPLATE_ID=...</pre><button class="copy" type="button">Copy</button></div>
+<div class="note">Don't put quotes or extra spaces around values, and never commit either <code>.env</code> file. Lock them down with <code>chmod 600 .env back/.env</code>.</div>
+
+<h3 id="run">Build and start</h3>
+<p>The order matters: the store reads the app catalog from the API while it builds, so the API has to be running first.</p>
+<ol class="steps">
+  <li>Build the Laravel image and generate the app key:
+    <div class="code"><pre>docker compose build api
+docker compose run --rm --no-deps --entrypoint php api artisan key:generate --show</pre><button class="copy" type="button">Copy</button></div>
+    Paste the output (<code>base64:…</code>) after <code>APP_KEY=</code> in <code>back/.env</code>.
+    <div class="warn"><strong>Never change APP_KEY later.</strong> Developers' bank details are encrypted with it.</div>
+  </li>
+  <li>Start the database, API and nginx:
+    <div class="code"><pre>docker compose up -d --build db api scheduler queue nginx
+docker compose ps          <span class="c"># api must show "healthy"</span></pre><button class="copy" type="button">Copy</button></div>
+  </li>
+  <li>Build and start the website and admin panel:
+    <div class="code"><pre>docker compose build website admin
+docker compose up -d</pre><button class="copy" type="button">Copy</button></div>
+  </li>
+  <li>Watch the logs for errors:
+    <div class="code"><pre>docker compose logs -f api nginx website</pre><button class="copy" type="button">Copy</button></div>
+  </li>
+</ol>
+
+<h3 id="admin">First admin</h3>
+<p>Admin panel accounts are separate from website accounts. The command asks for a password.</p>
+<div class="code"><pre>docker compose exec api php artisan app:create-admin you@example.com --name="Your Name"
+<span class="c"># other staff roles: --role=moderator or --role=curator</span></pre><button class="copy" type="button">Copy</button></div>
+<div class="warn"><strong>Never run <code>php artisan db:seed</code> without <code>--class</code>.</strong> It creates demo accounts whose password is <code>password</code>.</div>
+
+<h3 id="ssl">HTTPS certificate</h3>
+<p>Once DNS points at the server, request the certificate once by hand. After that, <code>certbot</code> renews it on its own.</p>
+<div class="code"><pre>docker compose run --rm --entrypoint certbot certbot certonly --webroot -w /var/www/certbot \
+  --cert-name metayaar -d metayaar.com -d www.metayaar.com -d admin.metayaar.com -d api.metayaar.com \
+  -m you@example.com --agree-tos --no-eff-email
+docker compose restart nginx
+
+<span class="c"># test renewal</span>
+docker compose run --rm --entrypoint certbot certbot renew --dry-run</pre><button class="copy" type="button">Copy</button></div>
+<div class="note">Login only works over HTTPS (the login cookie is secure), and the desktop and glasses apps connect to <code>https://metayaar.com</code>. Without a valid certificate, nobody can log in or install apps.</div>
+
+<h3 id="arvan">ArvanCloud CDN</h3>
+<p>If the DNS records are in proxy (cloud) mode:</p>
+<ul>
+  <li>Connect Arvan to the origin over <strong>HTTPS</strong>. With HTTP, nginx redirects to HTTPS and you get a redirect loop.</li>
+  <li>Don't cache <code>/download/*</code>, <code>/api/*</code> or account pages. Use the "origin headers" cache mode.</li>
+  <li>Set Arvan's upload size limit above 12 MB (APK uploads arrive in 5 MB chunks).</li>
+  <li>If certbot fails, Arvan is probably redirecting <code>/.well-known/acme-challenge/</code>. Turn proxy mode off, get the certificate, then turn it back on.</li>
+</ul>
+
+<h3 id="verify">Check it works</h3>
+<div class="code"><pre>docker compose ps                                          <span class="c"># all Up, api healthy</span>
+curl -I https://metayaar.com
+curl -I https://admin.metayaar.com
+curl -s https://api.metayaar.com/api/v1/apps | head -c 200
+curl -I https://metayaar.com/desktop/Metayaar-linux-amd64.deb
+curl -I https://metayaar.com/android/Metayaar-quest.apk    <span class="c"># application/vnd.android.package-archive</span>
+curl -I https://api.metayaar.com/.env                      <span class="c"># must be 403 or 404</span></pre><button class="copy" type="button">Copy</button></div>
+<p>Then check by hand:</p>
+<ul>
+  <li>Sign up, log in, and receive the SMS code.</li>
+  <li>A developer creates an app and uploads images and an APK.</li>
+  <li>An admin logs in at <code>admin.metayaar.com</code> and approves the app.</li>
+  <li>The desktop app opens the store, and "install on headset" works.</li>
+  <li>The glasses app opens the store.</li>
+</ul>
+
+<h3 id="update">Update, backup and everyday commands</h3>
+<h4>Update to new code</h4>
+<div class="code"><pre>cd /var/www/ecoshaar/metayaar
+git pull --ff-only
+docker compose up -d --build db api scheduler queue nginx
+docker compose build website admin
+docker compose up -d
+docker image prune -f</pre><button class="copy" type="button">Copy</button></div>
+<p>The old site keeps serving while the new images build. A change to <code>back/.env</code> only needs <code>docker compose up -d</code>, with no rebuild.</p>
+
+<h4>Daily backup</h4>
+<div class="code"><div class="file">/usr/local/bin/metayaar-backup.sh</div><pre>#!/usr/bin/env bash
+set -euo pipefail
+cd /var/www/ecoshaar/metayaar
+DEST=/backup/metayaar; DAY=$(date +%F); mkdir -p "$DEST"
+docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > "$DEST/db-$DAY.sql.gz"
+docker compose exec -T api tar czf - -C /var/www/html/storage app > "$DEST/storage-$DAY.tgz"
+tar czf "$DEST/env-$DAY.tgz" .env back/.env
+find "$DEST" -type f -mtime +14 -delete</pre><button class="copy" type="button">Copy</button></div>
+<p>Make it executable with <code>sudo chmod 700</code>, then add <code>0 3 * * * /usr/local/bin/metayaar-backup.sh</code> with <code>sudo crontab -e</code>.</p>
+<div class="warn"><strong><code>docker compose down -v</code> deletes the database and all uploads.</strong> To stop the stack, use <code>docker compose down</code> without <code>-v</code>.</div>
+
+<div class="table"><table>
+  <thead><tr><th>Command</th><th>Use</th></tr></thead>
+  <tbody>
+    <tr><td><code>docker compose ps</code></td><td>Service status</td></tr>
+    <tr><td><code>docker compose logs -f api</code></td><td>Live Laravel logs</td></tr>
+    <tr><td><code>docker compose exec api php artisan …</code></td><td>Run an artisan command</td></tr>
+    <tr><td><code>docker compose exec db psql -U metayaar</code></td><td>Open the database</td></tr>
+    <tr><td><code>docker compose restart website</code></td><td>Restart one service</td></tr>
+  </tbody>
+</table></div>
+
+<!-- ============ PART 2 ============ -->
+<div class="part-head">
+  <div class="eyebrow">Part 2</div>
+  <h2>Desktop app downloads for each OS</h2>
+  <p>The desktop app opens the store in a window and installs apps on a headset or glasses over USB with its own bundled adb. Users never install adb or drivers separately.</p>
+</div>
+
+<h3 id="downloads">How downloads work</h3>
+<p>On the server, <code>website/public/desktop</code> and <code>website/public/android</code> are mounted straight into nginx and the website. The <code>/download</code> and <code>/setup</code> pages detect the visitor's OS and <strong>only list installers whose files exist in that folder</strong>. Copy a new file in and it shows up right away, with no rebuild or restart.</p>
+<p>The file names must match exactly:</p>
+<div class="table"><table>
+  <thead><tr><th>OS</th><th>File</th><th>Type</th><th>Folder</th></tr></thead>
+  <tbody>
+    <tr><td>Windows</td><td><code>Metayaar-win-x64.exe</code></td><td>One-click installer, includes the USB driver</td><td>desktop/</td></tr>
+    <tr><td>Windows</td><td><code>Metayaar-win-x64.zip</code></td><td>Portable, no USB driver</td><td>desktop/</td></tr>
+    <tr><td>macOS</td><td><code>Metayaar-mac-universal.dmg</code></td><td>Apple Silicon and Intel</td><td>desktop/</td></tr>
+    <tr><td>Linux</td><td><code>Metayaar-linux-amd64.deb</code></td><td>Ubuntu, Debian, Mint, Pop!_OS; sets USB permissions</td><td>desktop/</td></tr>
+    <tr><td>Linux</td><td><code>Metayaar-linux-x86_64.AppImage</code></td><td>Any distro, no install</td><td>desktop/</td></tr>
+    <tr><td>Android glasses</td><td><code>Metayaar-quest.apk</code></td><td>The on-device app</td><td>android/</td></tr>
+  </tbody>
+</table></div>
+<div class="warn"><strong>The Windows .exe is missing right now.</strong> <code>website/public/desktop</code> currently has only the Windows .zip. Windows users get the portable version without the USB driver, so many of them won't see their device. Build the .exe (next section) and publish it.</div>
+
+<h3 id="build-desktop">Build the installers for each OS</h3>
+<p>Build on your development machine, inside <code>desktop/</code>, with Node 22. Always set <code>STORE_URL</code> to the real store address. A build without it, or a <code>-local-</code> build, connects to a development machine, and users see the "could not connect" screen.</p>
+<div class="os-grid">
+  <div class="os">
+    <h4>Linux</h4>
+    <p>Builds on any Linux machine.</p>
+<div class="code"><pre>STORE_URL=https://metayaar.com \
+  npm run release:linux</pre><button class="copy" type="button">Copy</button></div>
+    <ul><li>Makes the .deb and .AppImage</li></ul>
+  </div>
+  <div class="os">
+    <h4>Windows</h4>
+    <p>On Linux, the .exe needs wine (<code>sudo apt install wine64</code>). Without wine you only get the .zip.</p>
+<div class="code"><pre>STORE_URL=https://metayaar.com \
+  npm run release:win</pre><button class="copy" type="button">Copy</button></div>
+    <ul><li>Or build it on GitHub Actions</li></ul>
+  </div>
+  <div class="os">
+    <h4>macOS</h4>
+    <p>Only builds on a Mac, or on GitHub Actions.</p>
+<div class="code"><pre>STORE_URL=https://metayaar.com \
+  npm run release:mac</pre><button class="copy" type="button">Copy</button></div>
+    <ul><li>Makes the universal .dmg</li></ul>
+  </div>
+</div>
+<p><strong>All three at once:</strong> <code>.github/workflows/build.yml</code> builds Linux, Windows and macOS on their own runners. Run it from the Actions tab, or push a tag such as <code>v0.2.0</code> to attach the installers to a GitHub release. Then pull them into the website folder:</p>
+<div class="code"><pre>cd desktop
+npm run pull-release      <span class="c"># needs the gh CLI, signed in</span></pre><button class="copy" type="button">Copy</button></div>
+<p><code>release:*</code> and <code>pull-release</code> both copy the files to <code>website/public/desktop</code> on your machine.</p>
+
+<h4>The glasses APK</h4>
+<p>Build a signed release APK. You need <code>android/keystore.properties</code> and the keystore file. Always keep the same key, because Android refuses updates signed with a different one.</p>
+<div class="code"><pre>cd android
+./gradlew assembleRelease -PstoreUrl=https://metayaar.com
+cp app/build/outputs/apk/release/app-release.apk ../website/public/android/Metayaar-quest.apk</pre><button class="copy" type="button">Copy</button></div>
+<div class="warn"><strong>Never publish <code>app-debug.apk</code>.</strong> It loads <code>http://localhost:3000</code>, not the real store.</div>
+
+<h3 id="publish-desktop">Put the files on the server</h3>
+<div class="code"><pre>scp website/public/desktop/Metayaar-* deploy@SERVER:/var/www/ecoshaar/metayaar/website/public/desktop/
+scp website/public/android/Metayaar-quest.apk deploy@SERVER:/var/www/ecoshaar/metayaar/website/public/android/</pre><button class="copy" type="button">Copy</button></div>
+<p>Don't copy <code>Metayaar-local-*</code> files. Check each download:</p>
+<div class="code"><pre>for f in Metayaar-win-x64.exe Metayaar-win-x64.zip Metayaar-mac-universal.dmg \
+         Metayaar-linux-amd64.deb Metayaar-linux-x86_64.AppImage; do
+  printf '%-34s ' "$f"; curl -s -o /dev/null -w '%{http_code}\n' "https://metayaar.com/desktop/$f"
+done</pre><button class="copy" type="button">Copy</button></div>
+
+<h3 id="install-desktop">What users do on each OS</h3>
+<div class="os-grid">
+  <div class="os">
+    <h4>Windows</h4>
+    <ul>
+      <li>Run <code>Metayaar-win-x64.exe</code>, then accept the admin prompt once. It installs the app, adb and the USB driver.</li>
+      <li>Portable .zip: Extract All, run <code>Metayaar.exe</code>. If the device isn't found, use the .exe instead.</li>
+    </ul>
+  </div>
+  <div class="os">
+    <h4>macOS</h4>
+    <ul>
+      <li>Open the .dmg and drag Metayaar to Applications. No driver needed.</li>
+      <li>On first launch, if "Apple could not verify…" appears: System Settings → Privacy &amp; Security → <strong>Open Anyway</strong>, once.</li>
+    </ul>
+  </div>
+  <div class="os">
+    <h4>Linux</h4>
+    <ul>
+      <li>.deb (recommended): <code>sudo apt install ./Metayaar-linux-amd64.deb</code></li>
+      <li>AppImage: <code>chmod +x</code> it, then run it. On Ubuntu 24.04+, add <code>--no-sandbox</code>.</li>
+      <li>The AppImage can't set USB permissions; see <a href="#prep-pc">Prepare the computer</a>.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============ PART 3 ============ -->
+<div class="part-head">
+  <div class="eyebrow">Part 3</div>
+  <h2>Install the Android app on glasses that block installs</h2>
+  <p>For glasses that refuse APK installs from the device itself. Every install goes from a computer over a USB cable, using adb.</p>
+</div>
+
+<h3 id="why-adb">Why ADB works when the glasses block installs</h3>
+<p>The "unknown sources" block only stops apps on the glasses from installing other apps. <code>adb install</code> from a computer doesn't go through that setting, so you can install both the Metayaar app and any store app over the cable.</p>
+<div class="code diagram"><pre> Metayaar Desktop (computer)               Metayaar server
+ ┌────────────────────────┐  1. download  ┌──────────────────────┐
+ │ app page               │ ────────────► │ /download/&lt;slug&gt;     │
+ │ "Install on headset"   │ ◄──────────── │ checks login and     │
+ │ bundled adb            │    app.apk    │ purchase             │
+ └───────────┬────────────┘               └──────────────────────┘
+             │ 2. adb install -r -g app.apk   (USB cable)
+             ▼
+ ┌────────────────────────┐
+ │ Glasses (USB debugging)│   no "unknown sources" needed
+ └────────────────────────┘</pre></div>
+<div class="table"><table>
+  <thead><tr><th>Task</th><th>Possible with ADB?</th><th>How</th></tr></thead>
+  <tbody>
+    <tr><td>Install the Metayaar app on the glasses</td><td><span class="pill yes">Yes</span></td><td>Desktop app or <code>adb install</code></td></tr>
+    <tr><td>Install any store app</td><td><span class="pill yes">Yes</span></td><td>"Install on headset" button in the desktop app</td></tr>
+    <tr><td>Install an APK file you have on the computer</td><td><span class="pill yes">Yes</span></td><td>Desktop app's <code>/install</code> page, or <code>adb install</code></td></tr>
+    <tr><td>Install from inside the glasses, no computer</td><td><span class="pill no">Only if allowed</span></td><td>Try the <code>appops</code> command below; if it's blocked, install from the computer</td></tr>
+  </tbody>
+</table></div>
+
+<h3 id="prep-glasses">Prepare the glasses (once)</h3>
+<p>Menu names differ a little between brands. The usual path is:</p>
+<ol class="steps">
+  <li><strong>Turn on developer mode.</strong> Settings → About device → tap <em>Build number</em> seven times.</li>
+  <li><strong>Turn on USB debugging.</strong> Settings → Developer options → <em>USB debugging</em>. If there's also an <em>Install via USB</em> option, turn it on too.</li>
+  <li><strong>Connect the cable</strong> to the computer. Use a data cable; many charging cables have no data wires, and the glasses won't appear at all.</li>
+  <li><strong>Allow the computer.</strong> When "Allow USB debugging?" appears on the glasses, tick <em>Always allow from this computer</em> and confirm.</li>
+</ol>
+<div class="note">The glasses need Android 10 or newer. Older versions fail with <code>INSTALL_FAILED_OLDER_SDK</code>. On Meta Quest, turn on developer mode from the Meta Horizon phone app: Devices → Headset settings → Developer mode (create an organization at developers.meta.com first).</div>
+
+<h3 id="prep-pc">Prepare the computer (once)</h3>
+<p><strong>Recommended:</strong> install Metayaar Desktop from <code>/download</code> and log in. adb is inside the app.</p>
+<p><strong>Command line instead:</strong> install Android platform-tools (on Linux, <code>sudo apt install adb</code>) and check the connection. The glasses must show as <code>device</code>:</p>
+<div class="code"><pre>adb devices</pre><button class="copy" type="button">Copy</button></div>
+<div class="os-grid">
+  <div class="os">
+    <h4>Windows</h4>
+    <p>Install the glasses maker's USB/ADB driver. Without it, Windows doesn't see the glasses as an ADB device. The desktop .exe only bundles a generic driver.</p>
+  </div>
+  <div class="os">
+    <h4>macOS</h4>
+    <p>Nothing extra. macOS needs no driver for adb.</p>
+  </div>
+  <div class="os">
+    <h4>Linux</h4>
+    <p>The .deb only adds USB rules for Quest (<code>2833</code>) and Pico (<code>2d40</code>). For other glasses, add the maker's vendor ID:</p>
+  </div>
+</div>
+<div class="code"><div class="file">Linux: allow adb to open your glasses</div><pre><span class="c"># the 4 hex digits before ":" are the vendor ID, for example 1d6b</span>
+lsusb
+<span class="c"># replace XXXX with that vendor ID</span>
+echo 'SUBSYSTEM=="usb", ATTR{idVendor}=="XXXX", MODE="0666", GROUP="plugdev"' \
+  | sudo tee -a /etc/udev/rules.d/51-metayaar-headsets.rules
+sudo udevadm control --reload-rules && sudo udevadm trigger
+adb kill-server && adb devices</pre><button class="copy" type="button">Copy</button></div>
+
+<h3 id="install-metayaar">Install the Metayaar app on the glasses</h3>
+<h4>Option A: with Metayaar Desktop (recommended)</h4>
+<ol class="steps">
+  <li>Connect the glasses and open Metayaar Desktop.</li>
+  <li>Open the <strong>Metayaar for headset</strong> page (<code>/quest</code>) from the side menu.</li>
+  <li>Click <strong>Install Metayaar on headset</strong> and wait for the success message.</li>
+</ol>
+<h4>Option B: with the adb command</h4>
+<div class="code"><pre><span class="c"># download it from the server, then install</span>
+curl -LO https://metayaar.com/android/Metayaar-quest.apk
+adb install -r Metayaar-quest.apk          <span class="c"># must end with "Success"</span>
+
+<span class="c"># open it</span>
+adb shell am start -n ir.metayaar.store/.MainActivity</pre><button class="copy" type="button">Copy</button></div>
+<p>Log in to Metayaar on the glasses. The login is saved.</p>
+<div class="note"><strong>Login lasts 12 hours.</strong> Login tokens now expire after 12 hours (<code>SANCTUM_EXPIRATION=720</code>) for every account, so users on the glasses and in the desktop app have to log in again after that.</div>
+<h4>Optional: allow installs from inside the glasses</h4>
+<p>If you want to install apps later without a computer, grant the permission through adb:</p>
+<div class="code"><pre>adb shell appops set ir.metayaar.store REQUEST_INSTALL_PACKAGES allow
+adb shell appops get ir.metayaar.store REQUEST_INSTALL_PACKAGES   <span class="c"># should print: allow</span></pre><button class="copy" type="button">Copy</button></div>
+<p>If the command fails, or installing from the glasses still doesn't work, the maker blocks it by policy. That's fine: install from the computer as below.</p>
+
+<h3 id="install-apps">Install store apps on the glasses</h3>
+<h4>Option A: "Install on headset" in Metayaar Desktop (recommended)</h4>
+<ol class="steps">
+  <li>Connect the glasses and open Metayaar Desktop. On an app page, next to the install button, you should see "Connected to …" with the glasses model.</li>
+  <li>Log in to your account.</li>
+  <li>Find the app under <strong>Apps</strong> and open its page.</li>
+  <li>If it's a paid app you haven't bought, click <strong>Buy and install</strong> and finish the purchase.</li>
+  <li>Click <strong>Install on headset</strong>. If several devices are connected, pick the glasses.</li>
+  <li>The progress bar shows the download, then the install. "Installed" means it's done.</li>
+</ol>
+<h4>Option B: download the APK and install from the computer</h4>
+<ol class="steps">
+  <li>On the app page, click <strong>Download APK</strong>. It only appears for apps your account is allowed to download.</li>
+  <li>Install it either in Metayaar Desktop on the <strong>Install APK from computer</strong> page (<code>/install</code>), where you can pick several files at once, or with:
+    <div class="code"><pre>adb install -r -g app-name.apk</pre><button class="copy" type="button">Copy</button></div>
+  </li>
+</ol>
+<p><code>-r</code> replaces an installed version and keeps its data. <code>-g</code> grants the app's permissions up front, so the glasses don't need to ask.</p>
+
+<h3 id="launch">Open, update and remove apps</h3>
+<p>Installed apps appear in the glasses' app list (on Quest-like systems, under <em>Unknown Sources</em> in the Library). If the launcher only shows approved apps, start them from the computer:</p>
+<div class="code"><pre><span class="c"># the Metayaar app</span>
+adb shell am start -n ir.metayaar.store/.MainActivity
+<span class="c"># any installed app, by package name</span>
+adb shell monkey -p com.example.game -c android.intent.category.LAUNCHER 1
+<span class="c"># list installed apps to find a package name</span>
+adb shell pm list packages -3
+<span class="c"># open one app's store page inside Metayaar</span>
+adb shell am start -a android.intent.action.VIEW -d metayaar://apps/&lt;slug&gt;
+
+<span class="c"># update: install the new version over the old one (data stays)</span>
+adb install -r app-name.apk
+<span class="c"># remove</span>
+adb uninstall ir.metayaar.store
+adb uninstall com.example.game</pre><button class="copy" type="button">Copy</button></div>
+<p>An update must be signed with the same key and have a higher <code>versionCode</code>.</p>
+
+<h3 id="roles">Who can install what</h3>
+<p>The server checks the account before every download, whichever install method you use.</p>
+<div class="table"><table>
+  <thead><tr><th>Account</th><th>Apps it can install</th></tr></thead>
+  <tbody>
+    <tr><td>Player</td><td>Published free apps, and paid apps they bought</td></tr>
+    <tr><td>Developer</td><td>Everything above, plus their own apps in any state (draft, in review, rejected). Use this to test before publishing.</td></tr>
+    <tr><td>Moderator / admin</td><td>Every app in any state</td></tr>
+  </tbody>
+</table></div>
+<div class="ok"><strong>Testing every app on one pair of glasses</strong> (for example, in the office): give that account the moderator role in the admin panel.</div>
+
+<h3 id="troubleshoot">Troubleshooting</h3>
+<div class="table"><table>
+  <thead><tr><th>Problem</th><th>Cause</th><th>Fix</th></tr></thead>
+  <tbody>
+    <tr><td>Glasses don't appear in <code>adb devices</code> or the desktop app</td><td>Charging-only cable, missing driver, USB debugging off, or missing udev rule on Linux</td><td>Use a data cable; install the maker's driver on Windows; turn on USB debugging; add the udev rule on Linux</td></tr>
+    <tr><td>Status is <code>unauthorized</code></td><td>The permission prompt on the glasses wasn't accepted</td><td>Accept it with "Always allow". If it doesn't appear, run <code>adb kill-server</code> and reconnect.</td></tr>
+    <tr><td><code>INSTALL_FAILED_USER_RESTRICTED</code></td><td>The glasses block USB installs too</td><td>Turn on <em>Install via USB</em> in Developer options, or ask the maker</td></tr>
+    <tr><td><code>INSTALL_FAILED_OLDER_SDK</code></td><td>The glasses run Android older than 10</td><td>The Metayaar app can't run on these glasses</td></tr>
+    <tr><td><code>INSTALL_FAILED_UPDATE_INCOMPATIBLE</code></td><td>The installed version was signed with another key</td><td><code>adb uninstall &lt;package&gt;</code>, then install again (this erases the app's data)</td></tr>
+    <tr><td><code>INSTALL_FAILED_VERSION_DOWNGRADE</code></td><td>The file is older than the installed version</td><td>Get a newer file, or use <code>adb install -r -d</code></td></tr>
+    <tr><td>"Buy and install" instead of "Install on headset"</td><td>Paid app not bought on this account</td><td>Buy it, or log in with the account that bought it</td></tr>
+    <tr><td>"Install on headset" opens the download page</td><td>The site is open in a normal browser, not Metayaar Desktop</td><td>Open the same page inside Metayaar Desktop</td></tr>
+    <tr><td>App missing from the glasses' app list</td><td>The launcher hides unapproved apps</td><td>Start it with <code>adb shell am start</code> or <code>monkey</code></td></tr>
+    <tr><td>Desktop or glasses app shows "could not connect"</td><td>Built with the wrong <code>STORE_URL</code>, or the store isn't reachable</td><td>Rebuild with <code>STORE_URL=https://metayaar.com</code> and republish</td></tr>
+    <tr><td>Download page shows no file for an OS</td><td>File missing or misnamed in <code>website/public/desktop</code></td><td>Copy it with the exact name from the table in Part 2</td></tr>
+    <tr><td>Logged out after a while</td><td>The 12-hour token expiry</td><td>Expected; log in again. Change <code>SANCTUM_EXPIRATION</code> in <code>back/.env</code>, then <code>docker compose up -d</code>.</td></tr>
+    <tr><td>APK upload stops with 413</td><td>CDN upload size limit</td><td>Raise Arvan's limit above 12 MB</td></tr>
+  </tbody>
+</table></div>
+</main>
+</div>
+
+<script>
+document.querySelectorAll('.copy').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var pre = btn.parentElement.querySelector('pre');
+    var text = pre.innerText;
+    var done = function (label) { btn.textContent = label; setTimeout(function () { btn.textContent = 'Copy'; }, 1500); };
+    try {
+      navigator.clipboard.writeText(text).then(function () { done('Copied'); }, function () { selectText(pre); done('Press Ctrl+C'); });
+    } catch (e) { selectText(pre); done('Press Ctrl+C'); }
+  });
+});
+function selectText(el) {
+  var range = document.createRange(); range.selectNodeContents(el);
+  var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+}
+</script>
+</body>
+</html>

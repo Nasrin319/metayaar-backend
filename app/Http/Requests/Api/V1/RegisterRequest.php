@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api\V1;
 
 use App\Enums\AccountType;
+use App\Rules\PlainText;
 use App\Support\Mobile;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -39,7 +40,7 @@ class RegisterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', new PlainText],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
             'email_code' => ['required', 'string', 'digits:6'],
@@ -47,7 +48,7 @@ class RegisterRequest extends FormRequest
             'mobile_code' => ['required_with:mobile', 'nullable', 'string', 'digits:6'],
             'device_name' => ['nullable', 'string', 'max:255'],
             'account_type' => ['sometimes', Rule::enum(AccountType::class)],
-            'organization_name' => ['exclude_unless:account_type,organization', 'required', 'string', 'max:255'],
+            'organization_name' => ['exclude_unless:account_type,organization', 'required', 'string', 'max:255', new PlainText],
             'organization_national_id' => ['exclude_unless:account_type,organization', 'nullable', 'string', 'regex:/^\d{10,11}$/'],
             'organization_phone' => ['exclude_unless:account_type,organization', 'nullable', 'string', 'max:20'],
         ];

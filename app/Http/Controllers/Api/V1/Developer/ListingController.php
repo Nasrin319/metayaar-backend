@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Api\V1\Developer;
 
 use App\Enums\ListingStatus;
 use App\Enums\ListingType;
+use App\Enums\Permission;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Developer\ListingRequest;
 use App\Http\Resources\ListingResource;
 use App\Models\Listing;
+use App\Notifications\ListingAwaitingReview;
+use App\Support\StaffNotifications;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -87,7 +90,9 @@ class ListingController extends Controller
             throw ValidationException::withMessages(['payout_account' => ['برای فروش اپ پولی، ابتدا اطلاعات حساب بانکی (شماره شبا) را در بخش «اطلاعات تسویه» ثبت کنید.']]);
         }
 
+        $resubmitted = $listing->status === ListingStatus::Rejected;
         $listing->submitForReview($answers);
+        StaffNotifications::send(Permission::ReviewListings, new ListingAwaitingReview($listing, $resubmitted));
 
         return new ListingResource($listing);
     }
@@ -119,6 +124,8 @@ class ListingController extends Controller
         Gate::authorize('delete', $listing);
 
         $listing->delete();
+        // also removes the notifications about its comments, which carry the listing_id too
+        StaffNotifications::forget('listing_id', [$listing->id]);
 
         return response()->json(null, 204);
     }

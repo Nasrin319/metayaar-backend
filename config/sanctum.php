@@ -50,7 +50,9 @@ return [
     |
     */
 
-    'expiration' => (int) env('SANCTUM_EXPIRATION', 720),
+    // Each token gets its own expires_at from the session_hours admin setting (AuthController). This is
+    // only an optional hard cap on top, in minutes; leave SANCTUM_EXPIRATION unset to use the setting.
+    'expiration' => env('SANCTUM_EXPIRATION') ? (int) env('SANCTUM_EXPIRATION') : null,
 
     /*
     |--------------------------------------------------------------------------

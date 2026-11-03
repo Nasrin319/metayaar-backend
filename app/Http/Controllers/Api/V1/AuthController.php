@@ -14,6 +14,7 @@ use App\Http\Requests\Api\V1\UpdateOrganizationRequest;
 use App\Http\Requests\Api\V1\UpdatePasswordRequest;
 use App\Http\Requests\Api\V1\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
+use App\Models\Setting;
 use App\Models\User;
 use App\Support\Otp;
 use Illuminate\Http\JsonResponse;
@@ -225,7 +226,7 @@ class AuthController extends Controller
         $token = $user->createToken(
             $deviceName ?: "{$role->value}-token",
             ["role:{$role->value}"],
-            now()->addMinutes(config('sanctum.expiration')),
+            now()->addHours(Setting::integer('session_hours')),
         );
 
         return response()->json([

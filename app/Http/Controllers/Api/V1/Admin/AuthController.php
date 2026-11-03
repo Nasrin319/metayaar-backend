@@ -9,6 +9,7 @@ use App\Http\Requests\Api\V1\LoginRequest;
 use App\Http\Requests\Api\V1\UpdatePasswordRequest;
 use App\Http\Resources\AdminResource;
 use App\Models\Admin;
+use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -28,11 +29,16 @@ class AuthController extends Controller
         }
 
         $admin->forceFill(['last_login_at' => now()])->save();
-        $token = $admin->createToken($request->input('device_name') ?: 'admin-panel', ['admin']);
+        $token = $admin->createToken(
+            $request->input('device_name') ?: 'admin-panel',
+            ['admin'],
+            now()->addHours(Setting::integer('session_hours')),
+        );
 
         return response()->json([
             'token' => $token->plainTextToken,
             'token_type' => 'Bearer',
+            'expires_at' => $token->accessToken->expires_at?->toIso8601String(),
             'admin' => new AdminResource($admin),
         ]);
     }

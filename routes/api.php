@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\V1\VerificationController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('v1.')->group(function () {
+    // throttle:login, :otp and :comments are per-minute limits admins set in the panel (AppServiceProvider)
     Route::prefix('auth')->name('auth.')->group(function () {
         // the website calls it twice per signup: once to validate, once with the codes
         Route::post('{role}/register', [AuthController::class, 'register'])
@@ -42,29 +43,29 @@ Route::prefix('v1')->name('v1.')->group(function () {
 
         Route::post('{role}/login', [AuthController::class, 'login'])
             ->whereIn('role', Role::values())
-            ->middleware('throttle:10,1')
+            ->middleware('throttle:login')
             ->name('login');
 
         Route::post('{role}/login/code', [AuthController::class, 'loginWithCode'])
             ->whereIn('role', Role::values())
-            ->middleware('throttle:10,1')
+            ->middleware('throttle:login')
             ->name('login.code');
 
         // one-time codes for signup, login and password reset, by email or SMS
         Route::post('otp', [OtpController::class, 'send'])
-            ->middleware('throttle:5,1')
+            ->middleware('throttle:otp')
             ->name('otp.send');
 
         Route::post('reset-password/code', [PasswordResetController::class, 'resetWithCode'])
-            ->middleware('throttle:10,1')
+            ->middleware('throttle:login')
             ->name('password.reset.code');
 
         Route::post('forgot-password', [PasswordResetController::class, 'sendLink'])
-            ->middleware('throttle:5,1')
+            ->middleware('throttle:otp')
             ->name('password.email');
 
         Route::post('reset-password', [PasswordResetController::class, 'reset'])
-            ->middleware('throttle:10,1')
+            ->middleware('throttle:login')
             ->name('password.reset');
 
         Route::post('logout', [AuthController::class, 'logout'])
@@ -90,11 +91,11 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::delete('me/avatar', [AvatarController::class, 'destroy'])->name('me.avatar.destroy');
         Route::post('me/verification/{channel}/send', [VerificationController::class, 'send'])
             ->whereIn('channel', OtpChannel::values())
-            ->middleware('throttle:5,1')
+            ->middleware('throttle:otp')
             ->name('me.verification.send');
         Route::post('me/verification/{channel}', [VerificationController::class, 'verify'])
             ->whereIn('channel', OtpChannel::values())
-            ->middleware('throttle:10,1')
+            ->middleware('throttle:login')
             ->name('me.verification.verify');
         Route::delete('me/mobile', [VerificationController::class, 'destroyMobile'])->name('me.mobile.destroy');
         Route::post('me/roles/{role}', [AuthController::class, 'addRole'])
@@ -105,10 +106,10 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('apps/{listing:slug}/access', AppAccessController::class)->name('apps.access');
 
         Route::post('apps/{listing:slug}/comments', [CommentController::class, 'store'])
-            ->middleware('throttle:5,1')
+            ->middleware('throttle:comments')
             ->name('apps.comments.store');
         Route::post('comments/{comment}/replies', [CommentController::class, 'reply'])
-            ->middleware('throttle:10,1')
+            ->middleware('throttle:comments')
             ->name('comments.replies.store');
         Route::delete('comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
 
@@ -144,7 +145,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
     // staff accounts of the admin panel (App\Models\Admin)
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('auth/login', [AdminAuthController::class, 'login'])
-            ->middleware('throttle:10,1')
+            ->middleware('throttle:login')
             ->name('auth.login');
 
         Route::middleware(['auth:sanctum', 'account:admin'])->group(function () {

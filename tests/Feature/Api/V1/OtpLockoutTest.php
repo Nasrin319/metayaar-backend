@@ -36,7 +36,7 @@ class OtpLockoutTest extends TestCase
      */
     private function send(string $mobile = '09123456789', OtpPurpose $purpose = OtpPurpose::Login): void
     {
-        $this->travel(Otp::RESEND_SECONDS + 1)->seconds();
+        $this->travel(Otp::resendSeconds() + 1)->seconds();
         $this->otp->send(OtpChannel::Mobile, $mobile, $purpose);
     }
 
@@ -122,7 +122,7 @@ class OtpLockoutTest extends TestCase
         Setting::put(['otp_max_sends' => 1]);
 
         $this->postJson(route('v1.auth.otp.send'), ['channel' => 'mobile', 'destination' => '09123456789', 'purpose' => 'signup'])->assertOk();
-        $this->travel(Otp::RESEND_SECONDS + 1)->seconds();
+        $this->travel(Otp::resendSeconds() + 1)->seconds();
         $this->postJson(route('v1.auth.otp.send'), ['channel' => 'mobile', 'destination' => '09123456789', 'purpose' => 'signup'])
             ->assertStatus(429)
             ->assertJsonValidationErrors('destination');

@@ -3,6 +3,7 @@
 namespace App\Support\Sms;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
@@ -28,9 +29,17 @@ class MsgwaySmsSender implements SmsSender
                 'params' => [$code],
             ]);
 
+        $masked = substr($mobile, 0, 4).'***'.substr($mobile, -4);
+
         if ($response->failed() || $response->json('status') !== 'success') {
             $message = $response->json('error.message') ?? $response->body();
-            throw new RuntimeException("MsgWay rejected the SMS: {$message}");
+            throw new RuntimeException("MsgWay rejected the SMS to {$masked} (HTTP {$response->status()}): {$message}");
         }
+
+        // MsgWay accepted it; look the reference up in the panel's sent report if it never arrives
+        Log::info("MsgWay accepted the SMS to {$masked}", [
+            'reference_id' => $response->json('referenceID'),
+            'template_id' => $this->templateId,
+        ]);
     }
 }

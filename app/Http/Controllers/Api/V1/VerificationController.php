@@ -27,8 +27,8 @@ class VerificationController extends Controller
 
         return response()->json([
             'message' => 'A code has been sent.',
-            'expires_in' => Otp::TTL_MINUTES * 60,
-            'resend_in' => Otp::RESEND_SECONDS,
+            'expires_in' => Otp::ttlMinutes() * 60,
+            'resend_in' => Otp::resendSeconds(),
         ]);
     }
 

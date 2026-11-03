@@ -17,6 +17,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use RuntimeException;
@@ -53,7 +54,7 @@ class OtpTest extends TestCase
 
         $this->postJson(route('v1.auth.otp.send'), ['channel' => 'email', 'destination' => 'Jane@Example.com', 'purpose' => 'signup'])
             ->assertOk()
-            ->assertJsonPath('resend_in', Otp::RESEND_SECONDS);
+            ->assertJsonPath('resend_in', Otp::resendSeconds());
 
         $code = null;
         Notification::assertSentOnDemand(OtpCodeNotification::class, function (OtpCodeNotification $notification, array $channels, object $notifiable) use (&$code): bool {
@@ -93,7 +94,7 @@ class OtpTest extends TestCase
         $this->postJson(route('v1.auth.otp.send'), $payload)->assertOk();
         $this->postJson(route('v1.auth.otp.send'), $payload)->assertTooManyRequests();
 
-        $this->travel(Otp::RESEND_SECONDS + 1)->seconds();
+        $this->travel(Otp::resendSeconds() + 1)->seconds();
         $this->postJson(route('v1.auth.otp.send'), $payload)->assertOk();
         $this->assertDatabaseCount('otp_codes', 1);
     }
@@ -219,14 +220,14 @@ class OtpTest extends TestCase
         ]);
 
         $this->issueOtp(OtpChannel::Mobile, $user->mobile, OtpPurpose::Login);
-        for ($i = 0; $i < Otp::MAX_ATTEMPTS; $i++) {
+        for ($i = 0; $i < Otp::maxAttempts(); $i++) {
             $login('000000')->assertUnprocessable()->assertJsonValidationErrors(['code']);
         }
         $login('123456')->assertUnprocessable();
 
         OtpCode::query()->delete();
         $this->issueOtp(OtpChannel::Mobile, $user->mobile, OtpPurpose::Login);
-        $this->travel(Otp::TTL_MINUTES + 1)->minutes();
+        $this->travel(Otp::ttlMinutes() + 1)->minutes();
         $login('123456')->assertUnprocessable();
     }
 
@@ -337,8 +338,11 @@ class OtpTest extends TestCase
     public function test_msgway_sends_the_code_with_the_template(): void
     {
         Http::fake(['api.msgway.com/*' => Http::response(['status' => 'success', 'referenceID' => '12345678'])]);
+        Log::spy();
 
         (new MsgwaySmsSender('secret-key', 22891))->sendOtp('09123456789', '654321');
+
+        Log::shouldHaveReceived('info')->with('MsgWay accepted the SMS to 0912***6789', ['reference_id' => '12345678', 'template_id' => 22891]);
 
         Http::assertSent(fn (ClientRequest $request): bool => $request->url() === 'https://api.msgway.com/send'
             && $request->hasHeader('apiKey', 'secret-key')

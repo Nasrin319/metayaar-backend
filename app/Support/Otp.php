@@ -20,18 +20,31 @@ use Throwable;
  * one replaces it. Codes expire, allow a few wrong guesses, and are used up once accepted.
  *
  * An email or mobile that is sent otp_max_sends codes without one being accepted gets no more codes
- * for otp_lockout_hours (both admin settings). Accepting a code clears the count.
+ * for otp_lockout_hours. How long a code works (otp_ttl_minutes), how soon another may be sent
+ * (otp_resend_seconds) and how many wrong tries it allows (otp_max_attempts) are admin settings too.
+ * Accepting a code clears the count.
  */
 class Otp
 {
     public const int LENGTH = 6;
 
-    public const int TTL_MINUTES = 5;
+    /** Minutes a new code works for. */
+    public static function ttlMinutes(): int
+    {
+        return Setting::integer('otp_ttl_minutes');
+    }
 
     /** Seconds before a new code can be sent to the same destination for the same purpose. */
-    public const int RESEND_SECONDS = 60;
+    public static function resendSeconds(): int
+    {
+        return Setting::integer('otp_resend_seconds');
+    }
 
-    public const int MAX_ATTEMPTS = 5;
+    /** Wrong guesses a code allows before it stops working. */
+    public static function maxAttempts(): int
+    {
+        return Setting::integer('otp_max_attempts');
+    }
 
     public function __construct(private SmsSender $sms) {}
 
@@ -51,8 +64,8 @@ class Otp
 
         $latest = $this->latest($channel, $destination, $purpose);
 
-        if ($latest && $latest->created_at->diffInSeconds(now()) < self::RESEND_SECONDS) {
-            $wait = (int) ceil(self::RESEND_SECONDS - $latest->created_at->diffInSeconds(now()));
+        if ($latest && $latest->created_at->diffInSeconds(now()) < self::resendSeconds()) {
+            $wait = (int) ceil(self::resendSeconds() - $latest->created_at->diffInSeconds(now()));
             throw ValidationException::withMessages([
                 $errorKey => ["کد به‌تازگی ارسال شده است. {$wait} ثانیه دیگر دوباره امتحان کنید."],
             ])->status(429);
@@ -66,13 +79,13 @@ class Otp
             'destination' => $destination,
             'purpose' => $purpose,
             'code' => $code,
-            'expires_at' => now()->addMinutes(self::TTL_MINUTES),
+            'expires_at' => now()->addMinutes(self::ttlMinutes()),
         ]);
 
         try {
             match ($channel) {
                 OtpChannel::Email => Notification::route('mail', $destination)
-                    ->notify(new OtpCodeNotification($code, $purpose, self::TTL_MINUTES)),
+                    ->notify(new OtpCodeNotification($code, $purpose, self::ttlMinutes())),
                 OtpChannel::Mobile => $this->sms->sendOtp($destination, $code),
             };
         } catch (Throwable $exception) {
@@ -139,7 +152,7 @@ class Otp
     {
         $otp = $this->latest($channel, $destination, $purpose);
 
-        if (! $otp || $otp->expires_at->isPast() || $otp->attempts >= self::MAX_ATTEMPTS) {
+        if (! $otp || $otp->expires_at->isPast() || $otp->attempts >= self::maxAttempts()) {
             return false;
         }
 

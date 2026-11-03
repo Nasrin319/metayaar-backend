@@ -52,8 +52,8 @@ class OtpController extends Controller
 
         return response()->json([
             'message' => 'If the destination can receive it, a code has been sent.',
-            'expires_in' => Otp::TTL_MINUTES * 60,
-            'resend_in' => Otp::RESEND_SECONDS,
+            'expires_in' => Otp::ttlMinutes() * 60,
+            'resend_in' => Otp::resendSeconds(),
         ]);
     }
 }

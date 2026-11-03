@@ -22,6 +22,16 @@ class Setting extends Model
         'otp_max_sends' => 5,
         // how long the lockout lasts
         'otp_lockout_hours' => 5,
+        // how long a code works, how soon another may be sent, and how many wrong tries it allows
+        'otp_ttl_minutes' => 5,
+        'otp_resend_seconds' => 60,
+        'otp_max_attempts' => 5,
+        // requests per minute from one visitor (signed-in user, else IP) before 429; see AppServiceProvider
+        'login_attempts_per_minute' => 10,
+        'otp_requests_per_minute' => 5,
+        'comments_per_minute' => 5,
+        // how long a sign-in lasts, on the website and in the admin panel
+        'session_hours' => 12,
         // Metayaar's percent of each sale, for listings without their own commission_percent
         'default_commission_percent' => 20,
     ];
@@ -41,10 +51,11 @@ class Setting extends Model
      */
     public static function values(): array
     {
-        return Cache::rememberForever(self::CACHE_KEY, fn (): array => [
-            ...self::DEFAULTS,
-            ...self::query()->whereIn('key', array_keys(self::DEFAULTS))->pluck('value', 'key')->all(),
-        ]);
+        // only the saved values are cached; defaults are added on every read, so a setting added in
+        // a new release shows up without clearing the cache
+        $saved = Cache::rememberForever(self::CACHE_KEY, fn (): array => self::query()->pluck('value', 'key')->all());
+
+        return [...self::DEFAULTS, ...array_intersect_key($saved, self::DEFAULTS)];
     }
 
     public static function integer(string $key): int

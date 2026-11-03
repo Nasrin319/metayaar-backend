@@ -25,7 +25,7 @@ class StaffRoleResource extends JsonResource
             'permissions' => $this->permissions->pluck('name')->sort()->values(),
             'admins_count' => $this->whenCounted('users'),
             // the admin role always holds every permission and can't be changed
-            'locked' => $this->name === StaffRole::Admin->value,
+            'locked' => (bool) StaffRole::tryFrom($this->name)?->isLocked(),
         ];
     }
 }

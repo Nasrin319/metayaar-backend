@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\Permission;
+use App\Enums\StaffRole;
 use App\Models\Concerns\HasAvatar;
 use Database\Factories\AdminFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -24,6 +26,28 @@ class Admin extends Authenticatable
     use HasApiTokens, HasAvatar, HasFactory, HasRoles, Notifiable;
 
     public const string GUARD = 'admin';
+
+    /**
+     * Passes every permission check without holding any (see AppServiceProvider).
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole(StaffRole::SuperAdmin->value);
+    }
+
+    /**
+     * The permissions this staff member can use: all of them for a super admin, otherwise what their
+     * roles and direct permissions give.
+     *
+     * @return list<string>
+     */
+    public function grantedPermissions(): array
+    {
+        $names = $this->isSuperAdmin() ? Permission::values() : $this->getAllPermissions()->pluck('name')->all();
+        sort($names);
+
+        return array_values(array_unique($names));
+    }
 
     /**
      * The guard spatie/laravel-permission stores staff roles and permissions under.

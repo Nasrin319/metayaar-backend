@@ -3,7 +3,9 @@
 namespace App\Support;
 
 use App\Enums\Permission;
+use App\Enums\StaffRole;
 use App\Models\Admin;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Notification as Notifier;
@@ -23,11 +25,16 @@ class StaffNotifications
         try {
             $staff = Admin::permission($permission->value)->get();
         } catch (PermissionDoesNotExist) {
-            // the permission is created by RoleSeeder; before it runs nobody can act on the item
-            return;
+            // the permission is created by RoleSeeder; before it runs only super admins can act on it
+            $staff = new Collection;
         }
 
-        Notifier::send($staff, $notification);
+        // super admins can act on everything without holding the permission
+        $staff = $staff->merge(Admin::whereHas('roles', fn ($query) => $query->where('name', StaffRole::SuperAdmin->value))->get())->unique('id');
+
+        if ($staff->isNotEmpty()) {
+            Notifier::send($staff, $notification);
+        }
     }
 
     /**

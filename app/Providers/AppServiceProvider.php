@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Enums\Permission;
+use App\Models\Admin;
 use App\Models\Setting;
 use App\Models\User;
 use App\Support\Sms\LogSmsSender;
@@ -11,6 +13,7 @@ use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -36,6 +39,12 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureRateLimits();
+
+        // a super admin passes every staff permission check, including permissions added later; other
+        // abilities (policy rules such as "only listings in review can be approved") still apply
+        Gate::before(fn ($user, string $ability): ?bool => $user instanceof Admin
+            && in_array($ability, Permission::values(), true)
+            && $user->isSuperAdmin() ? true : null);
 
         // Password reset emails link to the website, which sends the token back to the API.
         $resetUrl = fn (User $user, string $token): string => config('app.frontend_url').'/reset-password?'.http_build_query([

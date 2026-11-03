@@ -74,7 +74,7 @@ class ListingPolicy
      */
     public function reviewDownload(Admin $admin, Listing $listing): Response
     {
-        if (! $admin->hasPermissionTo(Permission::ReviewListings->value)) {
+        if (! $admin->can(Permission::ReviewListings->value)) {
             return Response::deny();
         }
 
@@ -86,7 +86,7 @@ class ListingPolicy
      */
     public function review(Admin $admin, Listing $listing): Response
     {
-        if (! $admin->hasPermissionTo(Permission::ReviewListings->value)) {
+        if (! $admin->can(Permission::ReviewListings->value)) {
             return Response::deny();
         }
 

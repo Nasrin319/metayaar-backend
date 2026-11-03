@@ -46,10 +46,8 @@ class StaffRoleTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.permissions', ['listings.review']);
 
-        $this->getJson(route('v1.admin.roles.index'))
-            ->assertOk()
-            ->assertJsonPath('data.3.name', 'Support')
-            ->assertJsonPath('data.3.admins_count', 1);
+        $supportRole = collect($this->getJson(route('v1.admin.roles.index'))->assertOk()->json('data'))->firstWhere('name', 'Support');
+        $this->assertSame(1, $supportRole['admins_count']);
 
         Sanctum::actingAs($support->fresh());
         $this->getJson(route('v1.admin.users.index'))->assertForbidden();

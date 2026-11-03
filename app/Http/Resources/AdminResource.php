@@ -24,7 +24,8 @@ class AdminResource extends JsonResource
             'email' => $this->email,
             'avatar_url' => $this->avatarUrl(),
             'roles' => $this->getRoleNames(),
-            'permissions' => $this->getAllPermissions()->pluck('name')->sort()->values(),
+            'permissions' => $this->grantedPermissions(),
+            'is_super_admin' => $this->isSuperAdmin(),
             'last_login_at' => $this->last_login_at,
             'created_at' => $this->created_at,
         ];

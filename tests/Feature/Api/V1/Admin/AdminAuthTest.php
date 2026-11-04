@@ -42,11 +42,11 @@ class AdminAuthTest extends TestCase
     public function test_wrong_password_and_website_accounts_are_refused(): void
     {
         Admin::factory()->create(['email' => 'mod@metayaar.test']);
-        User::factory()->create(['email' => 'player@metayaar.test'])->assignRole(Role::Player->value);
+        User::factory()->create(['email' => 'member@metayaar.test'])->assignRole(Role::Member->value);
 
         $this->postJson(route('v1.admin.auth.login'), ['email' => 'mod@metayaar.test', 'password' => 'wrong'])
             ->assertJsonValidationErrors('email');
-        $this->postJson(route('v1.admin.auth.login'), ['email' => 'player@metayaar.test', 'password' => 'password'])
+        $this->postJson(route('v1.admin.auth.login'), ['email' => 'member@metayaar.test', 'password' => 'password'])
             ->assertJsonValidationErrors('email');
     }
 

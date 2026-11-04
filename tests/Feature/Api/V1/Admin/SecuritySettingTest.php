@@ -79,7 +79,7 @@ class SecuritySettingTest extends TestCase
     public function test_the_login_limit_follows_the_setting(): void
     {
         Setting::put(['login_attempts_per_minute' => 2]);
-        $attempt = fn () => $this->postJson(route('v1.auth.login', 'player'), ['email' => 'nobody@example.com', 'password' => 'wrong']);
+        $attempt = fn () => $this->postJson(route('v1.auth.login', 'member'), ['email' => 'nobody@example.com', 'password' => 'wrong']);
 
         $attempt()->assertUnprocessable();
         $attempt()->assertUnprocessable();
@@ -129,10 +129,10 @@ class SecuritySettingTest extends TestCase
     {
         $this->freezeSecond();
         Setting::put(['session_hours' => 48]);
-        $user = User::factory()->create()->assignRole(Role::Player->value);
+        $user = User::factory()->create()->assignRole(Role::Member->value);
         $admin = Admin::factory()->create()->assignRole(StaffRole::Admin->value);
 
-        $this->postJson(route('v1.auth.login', 'player'), ['email' => $user->email, 'password' => 'password'])
+        $this->postJson(route('v1.auth.login', 'member'), ['email' => $user->email, 'password' => 'password'])
             ->assertJsonPath('expires_at', now()->addHours(48)->toIso8601String());
         $this->postJson(route('v1.admin.auth.login'), ['email' => $admin->email, 'password' => 'password'])
             ->assertJsonPath('expires_at', now()->addHours(48)->toIso8601String());

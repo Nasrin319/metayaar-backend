@@ -79,7 +79,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
     // approved comments; a bearer token, when sent, adds the viewer's own comments still waiting
     Route::get('apps/{listing:slug}/comments', [CommentController::class, 'index'])->name('apps.comments.index');
 
-    // website accounts: players and developers
+    // website accounts: members and developers
     Route::middleware(['auth:sanctum', 'account:user'])->group(function () {
         Route::get('me', [AuthController::class, 'me'])->name('me');
         Route::put('me', [AuthController::class, 'updateProfile'])->name('me.update');

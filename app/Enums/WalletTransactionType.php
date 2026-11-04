@@ -7,7 +7,7 @@ namespace App\Enums;
  */
 enum WalletTransactionType: string
 {
-    /** A player bought one of the developer's apps: the price minus Metayaar's commission. */
+    /** A member bought one of the developer's apps: the price minus Metayaar's commission. */
     case Sale = 'sale';
 
     /** Metayaar paid money out to the developer's bank account. */

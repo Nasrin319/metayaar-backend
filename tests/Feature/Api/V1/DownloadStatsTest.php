@@ -30,8 +30,8 @@ class DownloadStatsTest extends TestCase
     public function test_each_download_is_logged_with_user_source_and_client(): void
     {
         $listing = $this->listingWithApk();
-        $player = User::factory()->create()->assignRole(Role::Player->value);
-        Sanctum::actingAs($player);
+        $member = User::factory()->create()->assignRole(Role::Member->value);
+        Sanctum::actingAs($member);
 
         // proxied by the website from the headset app
         $this->get(route('v1.apps.download', $listing), [
@@ -43,7 +43,7 @@ class DownloadStatsTest extends TestCase
 
         $this->assertDatabaseHas('downloads', [
             'listing_id' => $listing->id,
-            'user_id' => $player->id,
+            'user_id' => $member->id,
             'source' => 'headset',
             'ip_address' => '5.160.10.20',
             'version_name' => $listing->version_name,
@@ -54,7 +54,7 @@ class DownloadStatsTest extends TestCase
     public function test_refused_downloads_are_not_logged(): void
     {
         $listing = $this->listingWithApk(['price' => 49000]);
-        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Player->value));
+        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Member->value));
 
         $this->getJson(route('v1.apps.download', $listing))->assertPaymentRequired();
 

@@ -176,7 +176,7 @@ class OtpTest extends TestCase
             'password_confirmation' => 'secret-password',
         ];
 
-        $this->postJson(route('v1.auth.register', 'player'), $payload)
+        $this->postJson(route('v1.auth.register', 'member'), $payload)
             ->assertUnprocessable()
             ->assertOnlyJsonValidationErrors(['email_code', 'mobile_code']);
 
@@ -184,11 +184,11 @@ class OtpTest extends TestCase
         $this->issueOtp(OtpChannel::Mobile, '09123456789', OtpPurpose::Signup, '222222');
 
         // a wrong mobile code doesn't use up the right email code
-        $this->postJson(route('v1.auth.register', 'player'), [...$payload, 'email_code' => '111111', 'mobile_code' => '999999'])
+        $this->postJson(route('v1.auth.register', 'member'), [...$payload, 'email_code' => '111111', 'mobile_code' => '999999'])
             ->assertUnprocessable()
             ->assertOnlyJsonValidationErrors(['mobile_code']);
 
-        $this->postJson(route('v1.auth.register', 'player'), [...$payload, 'email_code' => '111111', 'mobile_code' => '222222'])
+        $this->postJson(route('v1.auth.register', 'member'), [...$payload, 'email_code' => '111111', 'mobile_code' => '222222'])
             ->assertCreated()
             ->assertJsonPath('user.mobile', '09123456789');
 
@@ -203,7 +203,7 @@ class OtpTest extends TestCase
         $this->issueOtp(OtpChannel::Email, 'jane@example.com', OtpPurpose::Login);
         $this->issueOtp(OtpChannel::Email, 'other@example.com', OtpPurpose::Signup);
 
-        $this->postJson(route('v1.auth.register', 'player'), [
+        $this->postJson(route('v1.auth.register', 'member'), [
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
             'email_code' => '123456',
@@ -214,8 +214,8 @@ class OtpTest extends TestCase
 
     public function test_expired_codes_and_too_many_wrong_guesses_are_rejected(): void
     {
-        $user = User::factory()->create(['mobile' => '09123456789'])->assignRole(Role::Player->value);
-        $login = fn (string $code) => $this->postJson(route('v1.auth.login.code', 'player'), [
+        $user = User::factory()->create(['mobile' => '09123456789'])->assignRole(Role::Member->value);
+        $login = fn (string $code) => $this->postJson(route('v1.auth.login.code', 'member'), [
             'channel' => 'mobile', 'destination' => $user->mobile, 'code' => $code,
         ]);
 
@@ -247,10 +247,10 @@ class OtpTest extends TestCase
 
     public function test_email_code_login_verifies_the_email(): void
     {
-        $user = User::factory()->unverified()->create()->assignRole(Role::Player->value);
+        $user = User::factory()->unverified()->create()->assignRole(Role::Member->value);
         $this->issueOtp(OtpChannel::Email, $user->email, OtpPurpose::Login);
 
-        $this->postJson(route('v1.auth.login.code', 'player'), ['channel' => 'email', 'destination' => $user->email, 'code' => '123456'])
+        $this->postJson(route('v1.auth.login.code', 'member'), ['channel' => 'email', 'destination' => $user->email, 'code' => '123456'])
             ->assertOk();
 
         $this->assertNotNull($user->fresh()->email_verified_at);
@@ -258,14 +258,14 @@ class OtpTest extends TestCase
 
     public function test_code_login_requires_the_role_and_keeps_the_code(): void
     {
-        $user = User::factory()->create()->assignRole(Role::Player->value);
+        $user = User::factory()->create()->assignRole(Role::Member->value);
         $this->issueOtp(OtpChannel::Email, $user->email, OtpPurpose::Login);
 
         $this->postJson(route('v1.auth.login.code', 'developer'), ['channel' => 'email', 'destination' => $user->email, 'code' => '123456'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['destination']);
 
-        $this->postJson(route('v1.auth.login.code', 'player'), ['channel' => 'email', 'destination' => $user->email, 'code' => '123456'])
+        $this->postJson(route('v1.auth.login.code', 'member'), ['channel' => 'email', 'destination' => $user->email, 'code' => '123456'])
             ->assertOk();
     }
 
@@ -290,8 +290,8 @@ class OtpTest extends TestCase
     public function test_signed_in_user_verifies_their_email_with_a_code(): void
     {
         Notification::fake();
-        $user = User::factory()->unverified()->create()->assignRole(Role::Player->value);
-        Sanctum::actingAs($user, ['role:player']);
+        $user = User::factory()->unverified()->create()->assignRole(Role::Member->value);
+        Sanctum::actingAs($user, ['role:member']);
 
         $this->postJson(route('v1.me.verification.send', 'email'))->assertOk();
         Notification::assertSentOnDemand(OtpCodeNotification::class, function (OtpCodeNotification $notification, array $channels, object $notifiable) use ($user): bool {
@@ -309,8 +309,8 @@ class OtpTest extends TestCase
 
     public function test_mobile_is_only_saved_after_its_code_is_confirmed(): void
     {
-        $user = User::factory()->create()->assignRole(Role::Player->value);
-        Sanctum::actingAs($user, ['role:player']);
+        $user = User::factory()->create()->assignRole(Role::Member->value);
+        Sanctum::actingAs($user, ['role:member']);
 
         $this->postJson(route('v1.me.verification.send', 'mobile'), ['mobile' => '09123456789'])->assertOk();
         $this->assertSame([['09123456789', $this->sentSms[0][1]]], $this->sentSms);
@@ -327,7 +327,7 @@ class OtpTest extends TestCase
     public function test_mobile_of_another_account_cannot_be_added(): void
     {
         User::factory()->create(['mobile' => '09123456789']);
-        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Player->value), ['role:player']);
+        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Member->value), ['role:member']);
 
         $this->postJson(route('v1.me.verification.send', 'mobile'), ['mobile' => '09123456789'])
             ->assertUnprocessable()

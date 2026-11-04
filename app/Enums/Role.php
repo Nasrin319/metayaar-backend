@@ -8,7 +8,7 @@ namespace App\Enums;
  */
 enum Role: string
 {
-    case Player = 'player';
+    case Member = 'member';
     case Developer = 'developer';
 
     /**
@@ -18,7 +18,7 @@ enum Role: string
      */
     public static function selfRegisterable(): array
     {
-        return [self::Player, self::Developer];
+        return [self::Member, self::Developer];
     }
 
     public function isSelfRegisterable(): bool

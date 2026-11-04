@@ -25,16 +25,16 @@ class UserRoleTest extends TestCase
     public function test_admin_searches_users_and_changes_their_website_roles(): void
     {
         Sanctum::actingAs(Admin::factory()->create()->assignRole(StaffRole::Admin->value));
-        $user = User::factory()->create(['email' => 'sara@studio.test'])->assignRole(Role::Player->value);
+        $user = User::factory()->create(['email' => 'sara@studio.test'])->assignRole(Role::Member->value);
 
         $this->getJson(route('v1.admin.users.index', ['search' => 'SARA@']))
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.email', 'sara@studio.test');
 
-        $this->putJson(route('v1.admin.users.roles', $user), ['roles' => ['player', 'developer']])
+        $this->putJson(route('v1.admin.users.roles', $user), ['roles' => ['member', 'developer']])
             ->assertOk()
-            ->assertJsonPath('data.roles', ['player', 'developer']);
+            ->assertJsonPath('data.roles', ['member', 'developer']);
 
         // staff roles are not website roles
         $this->putJson(route('v1.admin.users.roles', $user), ['roles' => ['moderator']])->assertJsonValidationErrors('roles.0');
@@ -43,7 +43,7 @@ class UserRoleTest extends TestCase
     public function test_staff_without_the_permission_cannot_manage_users(): void
     {
         Sanctum::actingAs(Admin::factory()->create()->assignRole(StaffRole::Moderator->value));
-        $user = User::factory()->create()->assignRole(Role::Player->value);
+        $user = User::factory()->create()->assignRole(Role::Member->value);
 
         $this->getJson(route('v1.admin.users.index'))->assertForbidden();
         $this->putJson(route('v1.admin.users.roles', $user), ['roles' => ['developer']])->assertForbidden();

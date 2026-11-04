@@ -109,9 +109,9 @@ class ListingTest extends TestCase
         $this->deleteJson(route('v1.developer.apps.destroy', $listing))->assertForbidden();
     }
 
-    public function test_players_cannot_use_the_developer_api(): void
+    public function test_members_cannot_use_the_developer_api(): void
     {
-        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Player->value));
+        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Member->value));
 
         $this->getJson(route('v1.developer.apps.index'))->assertForbidden();
     }

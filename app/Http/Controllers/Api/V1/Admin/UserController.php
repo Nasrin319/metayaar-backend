@@ -13,7 +13,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Validation\Rule;
 
 /**
- * Website accounts (players and developers) as staff manage them: roles, disabling and deleting.
+ * Website accounts (members and developers) as staff manage them: roles, disabling and deleting.
  */
 class UserController extends Controller
 {
@@ -42,7 +42,7 @@ class UserController extends Controller
     }
 
     /**
-     * Replace the user's website roles (player, developer).
+     * Replace the user's website roles (member, developer).
      */
     public function updateRoles(UpdateUserRolesRequest $request, User $user): UserResource
     {

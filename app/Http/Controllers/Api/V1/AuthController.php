@@ -26,7 +26,7 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     /**
-     * Register a new account with the given self-registerable role (player or developer), as an
+     * Register a new account with the given self-registerable role (member or developer), as an
      * individual or, with account_type=organization, as an organization with its details.
      */
     public function register(RegisterRequest $request, Role $role, Otp $otp): JsonResponse
@@ -126,7 +126,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Add a self-registerable role (e.g. developer) to the signed-in account, so an existing player
+     * Add a self-registerable role (e.g. developer) to the signed-in account, so an existing member
      * doesn't need a second account. The current token is swapped for one scoped to the new role.
      */
     public function addRole(Request $request, Role $role): JsonResponse

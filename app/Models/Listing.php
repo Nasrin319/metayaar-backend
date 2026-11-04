@@ -134,7 +134,7 @@ class Listing extends Model
     }
 
     /**
-     * Ownership records of players who bought this listing.
+     * Ownership records of members who bought this listing.
      *
      * @return HasMany<Purchase, $this>
      */
@@ -279,7 +279,7 @@ class Listing extends Model
     }
 
     /**
-     * Players' comments and the developer's replies, in every status.
+     * Members' comments and the developer's replies, in every status.
      *
      * @return HasMany<Comment, $this>
      */

@@ -3,7 +3,7 @@
 namespace App\Enums;
 
 /**
- * How intense the experience feels, from motion-sickness-safe to only for experienced players.
+ * How intense the experience feels, from motion-sickness-safe to only for experienced users.
  */
 enum Comfort: string
 {

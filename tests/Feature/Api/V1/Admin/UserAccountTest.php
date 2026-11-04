@@ -30,8 +30,8 @@ class UserAccountTest extends TestCase
 
     public function test_disabling_signs_the_user_out_everywhere(): void
     {
-        $user = User::factory()->create()->assignRole(Role::Player->value);
-        $token = $user->createToken('website', ['role:player'])->plainTextToken;
+        $user = User::factory()->create()->assignRole(Role::Member->value);
+        $token = $user->createToken('website', ['role:member'])->plainTextToken;
         $this->actingAsStaff(StaffRole::Admin);
 
         $this->postJson(route('v1.admin.users.disable', $user))
@@ -48,15 +48,15 @@ class UserAccountTest extends TestCase
 
     public function test_a_disabled_user_cannot_sign_in_with_a_password_or_a_code(): void
     {
-        $user = User::factory()->create(['disabled_at' => now()])->assignRole(Role::Player->value);
+        $user = User::factory()->create(['disabled_at' => now()])->assignRole(Role::Member->value);
 
-        $this->postJson(route('v1.auth.login', 'player'), ['email' => $user->email, 'password' => 'password'])
+        $this->postJson(route('v1.auth.login', 'member'), ['email' => $user->email, 'password' => 'password'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['email' => User::DISABLED_MESSAGE]);
 
         // a valid code is still refused
         $this->issueOtp(OtpChannel::Email, $user->email, OtpPurpose::Login);
-        $this->postJson(route('v1.auth.login.code', 'player'), ['channel' => 'email', 'destination' => $user->email, 'code' => '123456'])
+        $this->postJson(route('v1.auth.login.code', 'member'), ['channel' => 'email', 'destination' => $user->email, 'code' => '123456'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['destination' => User::DISABLED_MESSAGE]);
 
@@ -65,9 +65,9 @@ class UserAccountTest extends TestCase
 
     public function test_a_wrong_password_does_not_reveal_that_the_account_is_disabled(): void
     {
-        $user = User::factory()->create(['disabled_at' => now()])->assignRole(Role::Player->value);
+        $user = User::factory()->create(['disabled_at' => now()])->assignRole(Role::Member->value);
 
-        $this->postJson(route('v1.auth.login', 'player'), ['email' => $user->email, 'password' => 'wrong-password'])
+        $this->postJson(route('v1.auth.login', 'member'), ['email' => $user->email, 'password' => 'wrong-password'])
             ->assertJsonValidationErrors(['email' => 'ایمیل یا رمز عبور اشتباه است.']);
     }
 
@@ -83,12 +83,12 @@ class UserAccountTest extends TestCase
 
     public function test_enabling_lets_the_user_sign_in_again(): void
     {
-        $user = User::factory()->create(['disabled_at' => now()])->assignRole(Role::Player->value);
+        $user = User::factory()->create(['disabled_at' => now()])->assignRole(Role::Member->value);
         $this->actingAsStaff(StaffRole::Admin);
 
         $this->postJson(route('v1.admin.users.enable', $user))->assertOk()->assertJsonPath('data.disabled_at', null);
 
-        $this->postJson(route('v1.auth.login', 'player'), ['email' => $user->email, 'password' => 'password'])->assertOk();
+        $this->postJson(route('v1.auth.login', 'member'), ['email' => $user->email, 'password' => 'password'])->assertOk();
     }
 
     public function test_deleting_an_account_without_apps_or_purchases(): void

@@ -8,7 +8,7 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('app:assign-role {email : Email of an existing user} {role : One of player, developer}')]
+#[Signature('app:assign-role {email : Email of an existing user} {role : One of member, developer}')]
 #[Description('Give a website user a role. Staff roles belong to admin accounts, see app:create-admin')]
 class AssignRole extends Command
 {

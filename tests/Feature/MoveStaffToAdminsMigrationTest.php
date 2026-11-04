@@ -29,8 +29,8 @@ class MoveStaffToAdminsMigrationTest extends TestCase
         $moderator->assignRole(Role::findOrCreate('developer', 'web'));
         $moderator->createToken('panel', ['role:moderator']);
         $moderator->createToken('website', ['role:developer']);
-        $player = User::factory()->create();
-        $player->assignRole(Role::findOrCreate('player', 'web'));
+        $member = User::factory()->create();
+        $member->assignRole(Role::findOrCreate('member', 'web'));
         $listing = Listing::factory()->status(ListingStatus::Published)->create(['reviewed_by' => $moderator->id]);
 
         $this->artisan('migrate', ['--force' => true])->assertSuccessful();
@@ -44,7 +44,7 @@ class MoveStaffToAdminsMigrationTest extends TestCase
 
         $this->assertSame(['developer'], $moderator->fresh()->getRoleNames()->all());
         $this->assertSame([['role:developer']], $moderator->tokens()->pluck('abilities')->all());
-        $this->assertSame(['player'], $player->fresh()->getRoleNames()->all());
+        $this->assertSame(['member'], $member->fresh()->getRoleNames()->all());
         $this->assertSame(0, DB::table('roles')->where('guard_name', 'web')->where('name', 'moderator')->count());
     }
 }

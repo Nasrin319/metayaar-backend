@@ -39,8 +39,8 @@ class StaffNotificationTest extends TestCase
     public function test_a_new_comment_notifies_the_staff_who_moderate_comments(): void
     {
         $listing = Listing::factory()->status(ListingStatus::Published)->create(['title' => 'Beat Run']);
-        $player = User::factory()->create(['name' => 'Sara']);
-        Sanctum::actingAs($player);
+        $member = User::factory()->create(['name' => 'Sara']);
+        Sanctum::actingAs($member);
 
         $this->postJson(route('v1.apps.comments.store', $listing), ['body' => 'بازی خیلی خوبی است'])->assertCreated();
 
@@ -96,7 +96,7 @@ class StaffNotificationTest extends TestCase
 
     public function test_moderating_a_comment_marks_its_notification_read_for_everyone(): void
     {
-        $comment = $this->postCommentAsPlayer();
+        $comment = $this->postCommentAsMember();
         Sanctum::actingAs($this->moderator);
 
         $this->postJson(route('v1.admin.comments.approve', $comment))->assertOk();
@@ -119,7 +119,7 @@ class StaffNotificationTest extends TestCase
 
     public function test_deleting_a_comment_removes_its_notifications(): void
     {
-        $comment = $this->postCommentAsPlayer();
+        $comment = $this->postCommentAsMember();
         Sanctum::actingAs($comment->user);
 
         $this->deleteJson(route('v1.comments.destroy', $comment))->assertOk();
@@ -129,8 +129,8 @@ class StaffNotificationTest extends TestCase
 
     public function test_staff_list_their_notifications_and_mark_them_read(): void
     {
-        $this->postCommentAsPlayer();
-        $this->postCommentAsPlayer();
+        $this->postCommentAsMember();
+        $this->postCommentAsMember();
         Sanctum::actingAs($this->moderator);
 
         $response = $this->getJson(route('v1.admin.notifications.index'))
@@ -156,7 +156,7 @@ class StaffNotificationTest extends TestCase
 
     public function test_staff_cannot_read_someone_elses_notifications(): void
     {
-        $this->postCommentAsPlayer();
+        $this->postCommentAsMember();
         $notification = $this->moderator->notifications()->first();
         Sanctum::actingAs($this->curator);
 
@@ -183,7 +183,7 @@ class StaffNotificationTest extends TestCase
         return Listing::factory()->external()->for($developer, 'developer')->create(['price' => 0, ...$attributes]);
     }
 
-    private function postCommentAsPlayer(): Comment
+    private function postCommentAsMember(): Comment
     {
         $listing = Listing::factory()->status(ListingStatus::Published)->create();
         Sanctum::actingAs(User::factory()->create());

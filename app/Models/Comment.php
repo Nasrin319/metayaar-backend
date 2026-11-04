@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * A player's comment on an app, or (with a parent) the app developer's reply to one. Both wait for
+ * A member's comment on an app, or (with a parent) the app developer's reply to one. Both wait for
  * staff approval before the store shows them.
  */
 #[Fillable(['body'])]

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * A player's ownership of a paid listing, with how its price was split between Metayaar and the
+ * A member's ownership of a paid listing, with how its price was split between Metayaar and the
  * developer. Created by App\Support\Sales once a payment is verified.
  */
 #[Fillable(['listing_id', 'amount', 'commission_percent', 'commission_amount', 'developer_amount'])]

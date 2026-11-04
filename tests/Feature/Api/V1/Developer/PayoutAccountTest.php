@@ -91,9 +91,9 @@ class PayoutAccountTest extends TestCase
         $this->putJson(route('v1.developer.payout-account.update'), $this->details(['national_id' => '10101234567']))->assertOk();
     }
 
-    public function test_players_cannot_save_payout_details(): void
+    public function test_members_cannot_save_payout_details(): void
     {
-        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Player->value));
+        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Member->value));
 
         $this->putJson(route('v1.developer.payout-account.update'), $this->details())->assertForbidden();
     }

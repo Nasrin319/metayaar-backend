@@ -3,7 +3,7 @@
 namespace App\Enums;
 
 /**
- * How a listing is delivered to the player (spec STORE-5).
+ * How a listing is delivered to the member (spec STORE-5).
  */
 enum ListingType: string
 {

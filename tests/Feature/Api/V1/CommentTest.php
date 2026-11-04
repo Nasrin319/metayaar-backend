@@ -15,11 +15,11 @@ class CommentTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_a_player_comments_on_a_published_app_and_it_waits_for_approval(): void
+    public function test_a_member_comments_on_a_published_app_and_it_waits_for_approval(): void
     {
         $listing = Listing::factory()->status(ListingStatus::Published)->create();
-        $player = User::factory()->create();
-        Sanctum::actingAs($player);
+        $member = User::factory()->create();
+        Sanctum::actingAs($member);
 
         $this->postJson(route('v1.apps.comments.store', $listing), ['body' => '  بازی خیلی خوبی است.  '])
             ->assertCreated()
@@ -29,7 +29,7 @@ class CommentTest extends TestCase
 
         $this->assertDatabaseHas('comments', [
             'listing_id' => $listing->id,
-            'user_id' => $player->id,
+            'user_id' => $member->id,
             'parent_id' => null,
             'status' => 'pending',
         ]);
@@ -105,11 +105,11 @@ class CommentTest extends TestCase
     public function test_signed_in_viewers_also_see_their_own_waiting_comments(): void
     {
         $listing = Listing::factory()->status(ListingStatus::Published)->create();
-        $player = User::factory()->create();
-        $mine = Comment::factory()->for($listing)->for($player)->create();
+        $member = User::factory()->create();
+        $mine = Comment::factory()->for($listing)->for($member)->create();
         Comment::factory()->for($listing)->create();
 
-        Sanctum::actingAs($player);
+        Sanctum::actingAs($member);
 
         $this->getJson(route('v1.apps.comments.index', $listing))
             ->assertOk()

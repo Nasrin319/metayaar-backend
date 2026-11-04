@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * A published listing as players see it in the store. Leaves out review and file details.
+ * A published listing as members see it in the store. Leaves out review and file details.
  *
  * @mixin Listing
  */

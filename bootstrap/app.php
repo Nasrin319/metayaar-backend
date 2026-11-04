@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ConvertDigits;
 use App\Http\Middleware\EnsureAccountType;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -17,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->append(ConvertDigits::class);
+
         $middleware->alias([
             'account' => EnsureAccountType::class,
             'role' => RoleMiddleware::class,

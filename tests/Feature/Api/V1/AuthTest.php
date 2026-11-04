@@ -30,7 +30,7 @@ class AuthTest extends TestCase
     public static function selfRegisterableRoles(): array
     {
         return [
-            'player' => [Role::Player],
+            'member' => [Role::Member],
             'developer' => [Role::Developer],
         ];
     }
@@ -103,7 +103,7 @@ class AuthTest extends TestCase
     {
         $this->issueOtp(OtpChannel::Email, 'jane@example.com', OtpPurpose::Signup);
 
-        $this->postJson(route('v1.auth.register', 'player'), [
+        $this->postJson(route('v1.auth.register', 'member'), [
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
             'password' => 'secret-password',
@@ -119,7 +119,7 @@ class AuthTest extends TestCase
 
     public function test_organization_registration_validates_organization_fields(): void
     {
-        $this->postJson(route('v1.auth.register', 'player'), [
+        $this->postJson(route('v1.auth.register', 'member'), [
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
             'password' => 'secret-password',
@@ -129,7 +129,7 @@ class AuthTest extends TestCase
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['organization_name', 'organization_national_id']);
 
-        $this->postJson(route('v1.auth.register', 'player'), [
+        $this->postJson(route('v1.auth.register', 'member'), [
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
             'password' => 'secret-password',
@@ -143,8 +143,8 @@ class AuthTest extends TestCase
 
     public function test_profile_includes_organization_details(): void
     {
-        $user = User::factory()->organization()->create()->assignRole(Role::Player->value);
-        Sanctum::actingAs($user, ['role:player']);
+        $user = User::factory()->organization()->create()->assignRole(Role::Member->value);
+        Sanctum::actingAs($user, ['role:member']);
 
         $this->getJson(route('v1.me'))
             ->assertOk()
@@ -170,7 +170,7 @@ class AuthTest extends TestCase
     {
         User::factory()->create(['email' => 'taken@example.com']);
 
-        $this->postJson(route('v1.auth.register', 'player'), [
+        $this->postJson(route('v1.auth.register', 'member'), [
             'email' => 'taken@example.com',
             'password' => 'secret-password',
             'password_confirmation' => 'other-password',
@@ -222,9 +222,9 @@ class AuthTest extends TestCase
 
     public function test_login_ignores_email_case_and_spaces(): void
     {
-        $user = User::factory()->create(['email' => 'jane@example.com'])->assignRole(Role::Player->value);
+        $user = User::factory()->create(['email' => 'jane@example.com'])->assignRole(Role::Member->value);
 
-        $this->postJson(route('v1.auth.login', 'player'), [
+        $this->postJson(route('v1.auth.login', 'member'), [
             'email' => ' Jane@Example.com ',
             'password' => 'password',
         ])->assertOk()->assertJsonPath('user.id', $user->id);
@@ -232,22 +232,22 @@ class AuthTest extends TestCase
 
     public function test_user_cannot_login_with_a_role_they_do_not_have(): void
     {
-        $player = User::factory()->create()->assignRole(Role::Player->value);
+        $member = User::factory()->create()->assignRole(Role::Member->value);
 
         $this->postJson(route('v1.auth.login', Role::Developer->value), [
-            'email' => $player->email,
+            'email' => $member->email,
             'password' => 'password',
         ])->assertUnprocessable()
             ->assertJsonValidationErrors('email');
 
-        $this->assertCount(0, $player->tokens);
+        $this->assertCount(0, $member->tokens);
     }
 
     public function test_login_fails_with_wrong_password(): void
     {
-        $user = User::factory()->create()->assignRole(Role::Player->value);
+        $user = User::factory()->create()->assignRole(Role::Member->value);
 
-        $this->postJson(route('v1.auth.login', Role::Player->value), [
+        $this->postJson(route('v1.auth.login', Role::Member->value), [
             'email' => $user->email,
             'password' => 'wrong-password',
         ])->assertUnprocessable()
@@ -256,7 +256,7 @@ class AuthTest extends TestCase
 
     public function test_login_validation_errors_are_in_persian(): void
     {
-        $this->postJson(route('v1.auth.login', Role::Player->value), [
+        $this->postJson(route('v1.auth.login', Role::Member->value), [
             'email' => 'not-an-email',
         ])->assertUnprocessable()
             ->assertJsonValidationErrors([
@@ -282,7 +282,7 @@ class AuthTest extends TestCase
 
     public function test_user_can_update_their_profile(): void
     {
-        $user = User::factory()->create()->assignRole(Role::Player->value);
+        $user = User::factory()->create()->assignRole(Role::Member->value);
         $taken = User::factory()->create();
         Sanctum::actingAs($user);
 
@@ -299,7 +299,7 @@ class AuthTest extends TestCase
 
     public function test_individual_can_switch_to_an_organization_account(): void
     {
-        $user = User::factory()->create()->assignRole(Role::Player->value);
+        $user = User::factory()->create()->assignRole(Role::Member->value);
         Sanctum::actingAs($user);
 
         $this->putJson(route('v1.me.organization'), ['name' => 'Acme VR', 'national_id' => '10101234567', 'phone' => '02112345678'])
@@ -310,7 +310,7 @@ class AuthTest extends TestCase
 
         $user->refresh();
         $this->assertTrue($user->isOrganization());
-        $this->assertTrue($user->hasRole(Role::Player->value));
+        $this->assertTrue($user->hasRole(Role::Member->value));
     }
 
     public function test_organization_can_update_its_details(): void
@@ -328,7 +328,7 @@ class AuthTest extends TestCase
 
     public function test_organization_details_are_validated(): void
     {
-        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Player->value));
+        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Member->value));
 
         $this->putJson(route('v1.me.organization'), ['national_id' => '12ab'])
             ->assertJsonValidationErrors(['name', 'national_id']);
@@ -338,9 +338,9 @@ class AuthTest extends TestCase
 
     public function test_user_can_change_their_password_and_other_sessions_end(): void
     {
-        $user = User::factory()->create(['password' => 'old-password-1'])->assignRole(Role::Player->value);
-        $user->createToken('desktop', ['role:player']);
-        $token = $user->createToken('website', ['role:player'])->plainTextToken;
+        $user = User::factory()->create(['password' => 'old-password-1'])->assignRole(Role::Member->value);
+        $user->createToken('desktop', ['role:member']);
+        $token = $user->createToken('website', ['role:member'])->plainTextToken;
 
         $this->withToken($token)->putJson(route('v1.me.password'), [
             'current_password' => 'wrong',
@@ -359,15 +359,15 @@ class AuthTest extends TestCase
         $this->assertSame(['website'], $user->tokens()->pluck('name')->all());
     }
 
-    public function test_player_can_become_a_developer_without_a_second_account(): void
+    public function test_member_can_become_a_developer_without_a_second_account(): void
     {
-        $user = User::factory()->create()->assignRole(Role::Player->value);
-        $token = $user->createToken('website', ['role:player'])->plainTextToken;
+        $user = User::factory()->create()->assignRole(Role::Member->value);
+        $token = $user->createToken('website', ['role:member'])->plainTextToken;
 
         $response = $this->withToken($token)->postJson(route('v1.me.roles.store', 'developer'))
             ->assertOk()
             ->assertJsonPath('role', 'developer')
-            ->assertJsonPath('user.roles', ['player', 'developer']);
+            ->assertJsonPath('user.roles', ['member', 'developer']);
 
         $this->assertCount(1, $user->tokens()->get());
         $this->assertSame(['role:developer'], $user->tokens()->first()->abilities);
@@ -378,15 +378,15 @@ class AuthTest extends TestCase
 
     public function test_staff_roles_cannot_be_self_assigned(): void
     {
-        Sanctum::actingAs($user = User::factory()->create()->assignRole(Role::Player->value));
+        Sanctum::actingAs($user = User::factory()->create()->assignRole(Role::Member->value));
 
         $this->postJson('/api/v1/me/roles/admin')->assertNotFound();
-        $this->assertSame(['player'], $user->fresh()->getRoleNames()->all());
+        $this->assertSame(['member'], $user->fresh()->getRoleNames()->all());
     }
 
     public function test_role_middleware_restricts_role_areas(): void
     {
-        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Player->value));
+        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Member->value));
 
         $this->getJson(route('v1.developer.apps.index'))->assertForbidden();
         $this->getJson(route('v1.admin.dashboard'))->assertForbidden();

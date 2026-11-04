@@ -25,7 +25,7 @@ class PasswordResetTest extends TestCase
     public function test_reset_link_is_emailed_and_points_to_the_website(): void
     {
         Notification::fake();
-        $user = User::factory()->create()->assignRole(Role::Player->value);
+        $user = User::factory()->create()->assignRole(Role::Member->value);
 
         $this->postJson(route('v1.auth.password.email'), ['email' => $user->email])->assertOk();
 
@@ -49,7 +49,7 @@ class PasswordResetTest extends TestCase
     public function test_password_can_be_reset_with_the_emailed_token_and_sessions_end(): void
     {
         Notification::fake();
-        $user = User::factory()->create()->assignRole(Role::Player->value);
+        $user = User::factory()->create()->assignRole(Role::Member->value);
         $user->createToken('desktop');
 
         $this->postJson(route('v1.auth.password.email'), ['email' => $user->email]);

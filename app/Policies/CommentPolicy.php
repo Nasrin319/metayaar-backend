@@ -28,7 +28,7 @@ class CommentPolicy
 
     /**
      * Determine whether the user can reply to the comment: only the app's developer, once per comment,
-     * and only to an approved comment from a player.
+     * and only to an approved comment from a member.
      */
     public function reply(User $user, Comment $comment): Response
     {

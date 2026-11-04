@@ -99,7 +99,7 @@ class ListingReviewTest extends TestCase
     public static function websiteRoles(): array
     {
         return [
-            'player' => [Role::Player],
+            'member' => [Role::Member],
             'developer' => [Role::Developer],
         ];
     }

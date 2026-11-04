@@ -19,7 +19,7 @@ class DownloadTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $player;
+    private User $member;
 
     protected function setUp(): void
     {
@@ -27,7 +27,7 @@ class DownloadTest extends TestCase
 
         Storage::fake('apks');
         $this->seed(RoleSeeder::class);
-        $this->player = User::factory()->create()->assignRole(Role::Player->value);
+        $this->member = User::factory()->create()->assignRole(Role::Member->value);
     }
 
     public function test_guests_cannot_download(): void
@@ -37,10 +37,10 @@ class DownloadTest extends TestCase
         $this->getJson(route('v1.apps.download', $listing))->assertUnauthorized();
     }
 
-    public function test_signed_in_player_downloads_a_free_published_apk(): void
+    public function test_signed_in_member_downloads_a_free_published_apk(): void
     {
         $listing = $this->listingWithApk();
-        Sanctum::actingAs($this->player);
+        Sanctum::actingAs($this->member);
 
         $response = $this->get(route('v1.apps.download', $listing))
             ->assertOk()
@@ -53,11 +53,11 @@ class DownloadTest extends TestCase
     public function test_paid_apk_requires_a_purchase(): void
     {
         $listing = $this->listingWithApk(['price' => 49000]);
-        Sanctum::actingAs($this->player);
+        Sanctum::actingAs($this->member);
 
         $this->getJson(route('v1.apps.download', $listing))->assertPaymentRequired();
 
-        Purchase::factory()->for($this->player)->for($listing)->create();
+        Purchase::factory()->for($this->member)->for($listing)->create();
 
         $this->get(route('v1.apps.download', $listing))->assertOk();
     }
@@ -74,7 +74,7 @@ class DownloadTest extends TestCase
     {
         $listing = $this->listingWithApk(['price' => 49000], ListingStatus::InReview);
 
-        Sanctum::actingAs($this->player);
+        Sanctum::actingAs($this->member);
         $this->getJson(route('v1.apps.download', $listing))->assertNotFound();
 
         Sanctum::actingAs($listing->developer);
@@ -113,16 +113,16 @@ class DownloadTest extends TestCase
             ->assertExactJson(['data' => ['can_download' => true, 'is_owner' => true]]);
     }
 
-    public function test_player_must_buy_a_paid_apk_until_they_own_it(): void
+    public function test_member_must_buy_a_paid_apk_until_they_own_it(): void
     {
         $listing = $this->listingWithApk(['price' => 49000]);
-        Sanctum::actingAs($this->player);
+        Sanctum::actingAs($this->member);
 
         $this->getJson(route('v1.apps.access', $listing))
             ->assertOk()
             ->assertExactJson(['data' => ['can_download' => false, 'is_owner' => false]]);
 
-        Purchase::factory()->for($this->player)->for($listing)->create();
+        Purchase::factory()->for($this->member)->for($listing)->create();
 
         $this->getJson(route('v1.apps.access', $listing))
             ->assertOk()

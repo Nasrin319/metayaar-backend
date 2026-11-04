@@ -25,8 +25,8 @@ class AvatarTest extends TestCase
 
     public function test_user_can_upload_replace_and_remove_their_avatar(): void
     {
-        $user = User::factory()->create()->assignRole(Role::Player->value);
-        Sanctum::actingAs($user, ['role:player']);
+        $user = User::factory()->create()->assignRole(Role::Member->value);
+        Sanctum::actingAs($user, ['role:member']);
 
         $this->post(route('v1.me.avatar.store'), ['avatar' => UploadedFile::fake()->image('me.png', 256, 256)], ['Accept' => 'application/json'])
             ->assertOk()
@@ -45,7 +45,7 @@ class AvatarTest extends TestCase
 
     public function test_avatar_must_be_a_small_image(): void
     {
-        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Player->value), ['role:player']);
+        Sanctum::actingAs(User::factory()->create()->assignRole(Role::Member->value), ['role:member']);
 
         $this->post(route('v1.me.avatar.store'), ['avatar' => UploadedFile::fake()->create('doc.pdf', 100, 'application/pdf')], ['Accept' => 'application/json'])
             ->assertUnprocessable()->assertJsonValidationErrors(['avatar']);

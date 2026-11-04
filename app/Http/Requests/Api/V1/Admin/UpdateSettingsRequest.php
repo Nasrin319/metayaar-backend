@@ -27,6 +27,7 @@ class UpdateSettingsRequest extends FormRequest
             'otp_requests_per_minute' => ['sometimes', 'integer', 'min:1', 'max:60'],
             'comments_per_minute' => ['sometimes', 'integer', 'min:1', 'max:60'],
             'session_hours' => ['sometimes', 'integer', 'min:1', 'max:720'],
+            'payout_hold_days' => ['sometimes', 'integer', 'min:0', 'max:90'],
         ];
     }
 
@@ -45,6 +46,7 @@ class UpdateSettingsRequest extends FormRequest
             'otp_requests_per_minute.*' => 'تعداد درخواست کد در دقیقه باید عددی بین ۱ تا ۶۰ باشد.',
             'comments_per_minute.*' => 'تعداد ثبت نظر در دقیقه باید عددی بین ۱ تا ۶۰ باشد.',
             'session_hours.*' => 'مدت نشست ورود باید عددی بین ۱ تا ۷۲۰ ساعت باشد.',
+            'payout_hold_days.*' => 'مهلت تسویه باید عددی بین ۰ تا ۹۰ روز باشد.',
         ];
     }
 }

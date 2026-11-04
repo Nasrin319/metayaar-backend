@@ -34,6 +34,8 @@ class Setting extends Model
         'session_hours' => 12,
         // Metayaar's percent of each sale, for listings without their own commission_percent
         'default_commission_percent' => 20,
+        // days after a purchase before a developer can ask to be paid for that sale
+        'payout_hold_days' => 5,
     ];
 
     private const string CACHE_KEY = 'settings';

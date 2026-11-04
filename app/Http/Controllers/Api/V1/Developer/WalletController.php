@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Developer;
 
 use App\Enums\WalletTransactionType;
 use App\Http\Controllers\Controller;
+use App\Support\Payouts;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -12,7 +13,7 @@ use Illuminate\Http\Request;
  */
 class WalletController extends Controller
 {
-    public function __invoke(Request $request): JsonResponse
+    public function __invoke(Request $request, Payouts $payouts): JsonResponse
     {
         $user = $request->user();
 
@@ -28,6 +29,7 @@ class WalletController extends Controller
 
         return response()->json([
             'balance' => $user->wallet_balance,
+            'payout' => $payouts->summary($user),
             'totals' => [
                 'sales_count' => (int) $sales->sales_count,
                 'gross' => (int) $sales->gross,

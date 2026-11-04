@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\Admin\CommentReviewController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\DownloadController as AdminDownloadController;
 use App\Http\Controllers\Api\V1\Admin\FinanceController;
+use App\Http\Controllers\Api\V1\Admin\PayoutRequestController;
 use App\Http\Controllers\Api\V1\Admin\ListingReviewController;
 use App\Http\Controllers\Api\V1\Admin\NotificationController;
 use App\Http\Controllers\Api\V1\Admin\SettingController;
@@ -24,6 +25,7 @@ use App\Http\Controllers\Api\V1\Developer\ListingController;
 use App\Http\Controllers\Api\V1\Developer\ListingDownloadController;
 use App\Http\Controllers\Api\V1\Developer\ListingMediaController;
 use App\Http\Controllers\Api\V1\Developer\PayoutAccountController;
+use App\Http\Controllers\Api\V1\Developer\PayoutRequestController as DeveloperPayoutRequestController;
 use App\Http\Controllers\Api\V1\Developer\WalletController;
 use App\Http\Controllers\Api\V1\DownloadController;
 use App\Http\Controllers\Api\V1\OtpController;
@@ -121,6 +123,15 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('payout-account', [PayoutAccountController::class, 'show'])->name('payout-account.show');
             Route::put('payout-account', [PayoutAccountController::class, 'update'])->name('payout-account.update');
             Route::get('wallet', WalletController::class)->name('wallet');
+            Route::get('payout-requests', [DeveloperPayoutRequestController::class, 'index'])->name('payout-requests.index');
+            Route::post('payout-requests', [DeveloperPayoutRequestController::class, 'store'])->middleware('throttle:6,1')->name('payout-requests.store');
+
+            Route::controller(NotificationController::class)->prefix('notifications')->name('notifications.')->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('unread-count', 'unreadCount')->name('unread-count');
+                Route::post('read-all', 'readAll')->name('read-all');
+                Route::post('{notification}/read', 'read')->whereUuid('notification')->name('read');
+            });
 
             Route::apiResource('apps', ListingController::class)->parameters(['apps' => 'listing']);
             Route::post('apps/{listing}/submit', [ListingController::class, 'submit'])->name('apps.submit');
@@ -201,6 +212,12 @@ Route::prefix('v1')->name('v1.')->group(function () {
                 Route::get('finance', 'show')->name('finance.show');
                 Route::put('finance/commission', 'updateDefaultCommission')->name('finance.commission');
                 Route::put('listings/{listing}/commission', 'updateListingCommission')->name('listings.commission');
+            });
+
+            Route::middleware('permission:'.Permission::ManageFinance->value)->controller(PayoutRequestController::class)->prefix('payout-requests')->name('payout-requests.')->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('{payoutRequest}/pay', 'pay')->name('pay');
+                Route::post('{payoutRequest}/reject', 'reject')->name('reject');
             });
 
             Route::middleware('permission:'.Permission::ManageSettings->value)->controller(SettingController::class)->group(function () {

@@ -47,6 +47,16 @@ class User extends Authenticatable
     }
 
     /**
+     * This developer's requests to be paid from their wallet.
+     *
+     * @return HasMany<PayoutRequest, $this>
+     */
+    public function payoutRequests(): HasMany
+    {
+        return $this->hasMany(PayoutRequest::class);
+    }
+
+    /**
      * Where this developer's sales are paid out; null until saved.
      *
      * @return HasOne<PayoutAccount, $this>

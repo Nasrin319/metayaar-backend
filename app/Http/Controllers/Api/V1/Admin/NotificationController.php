@@ -8,7 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
 
 /**
- * The signed-in staff member's notifications: new apps to review, new comments and replies to moderate.
+ * The signed-in account's notifications. Staff get new apps to review and comments to moderate, developers
+ * hear what happened to their payout requests.
  */
 class NotificationController extends Controller
 {

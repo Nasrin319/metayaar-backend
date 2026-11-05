@@ -33,6 +33,9 @@ return [
         'driver' => env('SMS_DRIVER', 'log'),
     ],
 
+    // lets the admin panel tell the API the real address of who is signing in; same value in its .env.local
+    'internal_api_key' => env('INTERNAL_API_KEY'),
+
     'msgway' => [
         'api_key' => env('MSGWAY_API_KEY'),
         // ID of the approved template on the MsgWay panel; its first parameter is the code

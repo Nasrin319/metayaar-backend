@@ -26,7 +26,7 @@ class AdminAuthTest extends TestCase
     {
         $admin = Admin::factory()->create(['email' => 'mod@metayaar.test'])->assignRole(StaffRole::Moderator->value);
 
-        $token = $this->postJson(route('v1.admin.auth.login'), ['email' => 'mod@metayaar.test', 'password' => 'password'])
+        $token = $this->postJson(route('v1.admin.auth.login'), ['email' => 'mod@metayaar.test', 'password' => 'password', 'captcha_token' => \App\Support\Captcha::issue('1 + 1', 2)['token'], 'captcha_answer' => '2'])
             ->assertOk()
             ->assertJsonPath('admin.roles', ['moderator'])
             ->assertJsonPath('admin.permissions', ['comments.moderate', 'listings.review'])
@@ -44,9 +44,9 @@ class AdminAuthTest extends TestCase
         Admin::factory()->create(['email' => 'mod@metayaar.test']);
         User::factory()->create(['email' => 'member@metayaar.test'])->assignRole(Role::Member->value);
 
-        $this->postJson(route('v1.admin.auth.login'), ['email' => 'mod@metayaar.test', 'password' => 'wrong'])
+        $this->postJson(route('v1.admin.auth.login'), ['email' => 'mod@metayaar.test', 'password' => 'wrong', 'captcha_token' => \App\Support\Captcha::issue('1 + 1', 2)['token'], 'captcha_answer' => '2'])
             ->assertJsonValidationErrors('email');
-        $this->postJson(route('v1.admin.auth.login'), ['email' => 'member@metayaar.test', 'password' => 'password'])
+        $this->postJson(route('v1.admin.auth.login'), ['email' => 'member@metayaar.test', 'password' => 'password', 'captcha_token' => \App\Support\Captcha::issue('1 + 1', 2)['token'], 'captcha_answer' => '2'])
             ->assertJsonValidationErrors('email');
     }
 

@@ -290,7 +290,7 @@ class ApkIcon
         return $best;
     }
 
-    private static function string(string $data, int $pool, int $index): ?string
+    public static function string(string $data, int $pool, int $index): ?string
     {
         if ($index >= self::u32($data, $pool + 8)) {
             return null;
@@ -322,12 +322,12 @@ class ApkIcon
         return mb_convert_encoding(substr($data, $position, $length * 2), 'UTF-8', 'UTF-16LE');
     }
 
-    private static function u16(string $data, int $offset): int
+    public static function u16(string $data, int $offset): int
     {
         return unpack('v', $data, $offset)[1];
     }
 
-    private static function u32(string $data, int $offset): int
+    public static function u32(string $data, int $offset): int
     {
         return unpack('V', $data, $offset)[1];
     }

@@ -12,6 +12,7 @@ enum Permission: string
     case ModerateComments = 'comments.moderate';
     case ManageUsers = 'users.manage';
     case CurateStore = 'store.curate';
+    case ManageContent = 'content.manage';
     case ManageStaff = 'staff.manage';
     case ViewStatistics = 'statistics.view';
     case ManageSettings = 'settings.manage';

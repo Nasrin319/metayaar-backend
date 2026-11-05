@@ -53,6 +53,7 @@ class AuthTest extends TestCase
     public function test_user_can_register_with_self_registerable_role(Role $role): void
     {
         $this->issueOtp(OtpChannel::Email, 'jane@example.com', OtpPurpose::Signup);
+        $this->issueOtp(OtpChannel::Mobile, '09123456789', OtpPurpose::Signup);
 
         $response = $this->postJson(route('v1.auth.register', $role->value), [
             'name' => 'Jane Doe',
@@ -60,6 +61,8 @@ class AuthTest extends TestCase
             'password' => 'secret-password',
             'password_confirmation' => 'secret-password',
             'email_code' => '123456',
+            'mobile' => '09123456789',
+            'mobile_code' => '123456',
         ]);
 
         $response->assertCreated()
@@ -75,6 +78,7 @@ class AuthTest extends TestCase
     public function test_user_can_register_as_an_organization(Role $role): void
     {
         $this->issueOtp(OtpChannel::Email, 'jane@example.com', OtpPurpose::Signup);
+        $this->issueOtp(OtpChannel::Mobile, '09123456789', OtpPurpose::Signup);
 
         $response = $this->postJson(route('v1.auth.register', $role->value), [
             'name' => 'Jane Doe',
@@ -82,6 +86,8 @@ class AuthTest extends TestCase
             'password' => 'secret-password',
             'password_confirmation' => 'secret-password',
             'email_code' => '123456',
+            'mobile' => '09123456789',
+            'mobile_code' => '123456',
             'account_type' => 'organization',
             'organization_name' => 'Acme VR',
             'organization_national_id' => '10101234567',
@@ -102,6 +108,7 @@ class AuthTest extends TestCase
     public function test_individual_registration_ignores_organization_fields(): void
     {
         $this->issueOtp(OtpChannel::Email, 'jane@example.com', OtpPurpose::Signup);
+        $this->issueOtp(OtpChannel::Mobile, '09123456789', OtpPurpose::Signup);
 
         $this->postJson(route('v1.auth.register', 'member'), [
             'name' => 'Jane Doe',
@@ -109,6 +116,8 @@ class AuthTest extends TestCase
             'password' => 'secret-password',
             'password_confirmation' => 'secret-password',
             'email_code' => '123456',
+            'mobile' => '09123456789',
+            'mobile_code' => '123456',
             'organization_name' => 'Acme VR',
         ])->assertCreated()
             ->assertJsonPath('user.account_type', 'individual')
@@ -175,7 +184,56 @@ class AuthTest extends TestCase
             'password' => 'secret-password',
             'password_confirmation' => 'other-password',
         ])->assertUnprocessable()
-            ->assertJsonValidationErrors(['name', 'email', 'password']);
+            ->assertJsonValidationErrors(['name', 'email', 'password', 'mobile']);
+    }
+
+    public function test_register_needs_a_mobile_and_its_code(): void
+    {
+        $this->issueOtp(OtpChannel::Email, 'jane@example.com', OtpPurpose::Signup);
+        $payload = [
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+            'password' => 'secret-password',
+            'password_confirmation' => 'secret-password',
+            'email_code' => '123456',
+        ];
+
+        $this->postJson(route('v1.auth.register', 'member'), $payload)
+            ->assertUnprocessable()
+            ->assertOnlyJsonValidationErrors(['mobile', 'mobile_code']);
+
+        $this->postJson(route('v1.auth.register', 'member'), [...$payload, 'mobile' => '09123456789'])
+            ->assertUnprocessable()
+            ->assertOnlyJsonValidationErrors(['mobile_code']);
+
+        $this->assertDatabaseMissing('users', ['email' => 'jane@example.com']);
+    }
+
+    public function test_logging_in_with_the_wrong_role_names_the_accounts_role_only_after_the_right_password(): void
+    {
+        $user = User::factory()->create()->assignRole(Role::Developer->value);
+
+        $this->postJson(route('v1.auth.login', 'member'), ['email' => $user->email, 'password' => 'password'])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.email.0', 'This account does not have the member role. Its roles: developer.');
+
+        $wrongPassword = $this->postJson(route('v1.auth.login', 'member'), ['email' => $user->email, 'password' => 'wrong'])
+            ->assertUnprocessable();
+        $this->assertStringNotContainsString('developer', $wrongPassword->json('errors.email.0'));
+    }
+
+    public function test_code_login_with_the_wrong_role_names_the_accounts_role_and_keeps_the_code(): void
+    {
+        $user = User::factory()->create()->assignRole(Role::Developer->value);
+        $this->issueOtp(OtpChannel::Email, $user->email, OtpPurpose::Login);
+        $payload = ['channel' => 'email', 'destination' => $user->email, 'code' => '123456'];
+
+        $this->postJson(route('v1.auth.login.code', 'member'), $payload)
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.destination.0', 'This account does not have the member role. Its roles: developer.');
+
+        // the same code still works once the right role is chosen
+        $this->postJson(route('v1.auth.login.code', 'developer'), $payload)->assertOk();
     }
 
     public function test_unknown_role_returns_not_found(): void

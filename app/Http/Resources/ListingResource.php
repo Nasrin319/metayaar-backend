@@ -49,6 +49,7 @@ class ListingResource extends JsonResource
                 'sha256' => $this->apk_sha256,
                 'uploaded_at' => $this->apk_uploaded_at,
             ] : null,
+            'file_report' => $this->file_report,
             'icon_url' => $this->iconUrl(),
             'icon_from_apk' => $this->icon_from_apk,
             'title_image_url' => $this->titleImageUrl(),

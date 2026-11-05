@@ -34,7 +34,7 @@ enum StaffRole: string
             self::SuperAdmin => [],
             self::Admin => Permission::cases(),
             self::Moderator => [Permission::ReviewListings, Permission::ModerateComments],
-            self::Curator => [Permission::CurateStore],
+            self::Curator => [Permission::CurateStore, Permission::ManageContent],
         };
     }
 }

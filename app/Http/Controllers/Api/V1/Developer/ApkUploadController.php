@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Developer;
 
 use App\Enums\ListingStatus;
+use App\Enums\ListingType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Developer\ApkChunkRequest;
 use App\Http\Requests\Api\V1\Developer\StartApkUploadRequest;
@@ -10,6 +11,7 @@ use App\Http\Resources\ListingResource;
 use App\Models\ApkUpload;
 use App\Models\Listing;
 use App\Support\ApkIcon;
+use App\Support\FileChecks;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
@@ -25,8 +27,8 @@ use Throwable;
 class ApkUploadController extends Controller
 {
     /**
-     * Start an upload. Any unfinished upload for the listing is discarded. A listing of any type can
-     * take a file; it becomes an APK listing once the upload completes.
+     * Start an upload. Any unfinished upload for the listing is discarded. A Windows listing takes an
+     * exe or zip. A listing of any other type can take an APK and becomes an APK listing once it completes.
      */
     public function store(StartApkUploadRequest $request, Listing $listing): JsonResponse
     {
@@ -107,27 +109,47 @@ class ApkUploadController extends Controller
         $disk = Storage::disk('apks');
         $partialPath = $disk->path($apkUpload->partialPath());
 
-        if (filesize($partialPath) !== $apkUpload->size || ! $this->isZipArchive($partialPath)) {
+        $windows = $listing->type === ListingType::Windows;
+        $extension = $windows ? strtolower(pathinfo($apkUpload->original_name, PATHINFO_EXTENSION)) : 'apk';
+
+        if (filesize($partialPath) !== $apkUpload->size || (! $windows && ! $this->isZipArchive($partialPath))) {
             $apkUpload->delete();
 
-            throw ValidationException::withMessages(['chunk' => ['فایل بارگذاری‌شده یک APK معتبر نیست.']]);
+            throw ValidationException::withMessages(['chunk' => ['فایل بارگذاری‌شده معتبر نیست.']]);
         }
 
-        $path = "listings/{$listing->id}/".Str::uuid().'.apk';
+        $report = $windows ? FileChecks::windows($partialPath, $extension) : FileChecks::apk($partialPath, $listing->package_name);
+        $blocking = FileChecks::blockingMessage($report);
+        if ($blocking) {
+            $apkUpload->delete();
+
+            throw ValidationException::withMessages(['chunk' => [$blocking]]);
+        }
+
+        $path = "listings/{$listing->id}/".Str::uuid().'.'.$extension;
         $sha256 = hash_file('sha256', $partialPath);
         $disk->move($apkUpload->partialPath(), $path);
 
-        $listing->attachApk($path, $apkUpload->original_name, $apkUpload->size, $sha256);
+        $listing->attachApk($path, $apkUpload->original_name, $apkUpload->size, $sha256, $report);
         $apkUpload->delete();
 
-        try {
-            $icon = ApkIcon::extract($disk->path($path));
-            if ($icon) {
-                $listing->attachApkIcon($icon['contents'], $icon['extension']);
+        if (! $windows) {
+            // the file knows its own version better than a form, and saves the developer typing it
+            $listing->forceFill(array_filter([
+                'package_name' => $listing->package_name ?: ($report['package'] ?? null),
+                'version_code' => $report['version_code'] ?? null,
+                'version_name' => $report['version_name'] ?? null,
+            ]))->save();
+
+            try {
+                $icon = ApkIcon::extract($disk->path($path));
+                if ($icon) {
+                    $listing->attachApkIcon($icon['contents'], $icon['extension']);
+                }
+            } catch (Throwable $e) {
+                // An unreadable manifest only costs the automatic icon, not the upload.
+                report($e);
             }
-        } catch (Throwable $e) {
-            // An unreadable manifest only costs the automatic icon, not the upload.
-            report($e);
         }
 
         // A reviewer approved the previous file, so a replacement must be reviewed again.

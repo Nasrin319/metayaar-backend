@@ -134,7 +134,7 @@ class SecuritySettingTest extends TestCase
 
         $this->postJson(route('v1.auth.login', 'member'), ['email' => $user->email, 'password' => 'password'])
             ->assertJsonPath('expires_at', now()->addHours(48)->toIso8601String());
-        $this->postJson(route('v1.admin.auth.login'), ['email' => $admin->email, 'password' => 'password'])
+        $this->postJson(route('v1.admin.auth.login'), ['email' => $admin->email, 'password' => 'password', 'captcha_token' => \App\Support\Captcha::issue('1 + 1', 2)['token'], 'captcha_answer' => '2'])
             ->assertJsonPath('expires_at', now()->addHours(48)->toIso8601String());
     }
 }

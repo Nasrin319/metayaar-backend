@@ -36,7 +36,7 @@ class SuperAdminTest extends TestCase
 
         $this->getJson(route('v1.admin.me'))
             ->assertJsonPath('data.is_super_admin', true)
-            ->assertJsonPath('data.permissions', ['comments.moderate', 'finance.manage', 'listings.review', 'settings.manage', 'staff.manage', 'statistics.view', 'store.curate', 'users.manage']);
+            ->assertJsonPath('data.permissions', ['comments.moderate', 'content.manage', 'finance.manage', 'listings.review', 'settings.manage', 'staff.manage', 'statistics.view', 'store.curate', 'users.manage']);
 
         foreach (['v1.admin.listings.index', 'v1.admin.comments.index', 'v1.admin.users.index', 'v1.admin.settings.show', 'v1.admin.finance.show', 'v1.admin.staff.index', 'v1.admin.roles.index', 'v1.admin.statistics.downloads'] as $route) {
             $this->getJson(route($route))->assertOk();
@@ -112,7 +112,7 @@ class SuperAdminTest extends TestCase
 
         $this->seed(RoleSeeder::class);
 
-        $this->assertCount(8, $role->fresh()->permissions);
+        $this->assertCount(9, $role->fresh()->permissions);
     }
 
     public function test_the_command_can_make_an_account_a_super_admin(): void

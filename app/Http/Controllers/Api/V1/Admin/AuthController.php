@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Admin\AdminLoginRequest;
 use App\Http\Requests\Api\V1\Admin\UpdateAdminProfileRequest;
 use App\Http\Requests\Api\V1\AvatarRequest;
-use App\Http\Requests\Api\V1\LoginRequest;
 use App\Http\Requests\Api\V1\UpdatePasswordRequest;
 use App\Http\Resources\AdminResource;
 use App\Models\Admin;
+use App\Models\AdminLogin;
 use App\Models\Setting;
+use App\Support\Captcha;
+use App\Support\ClientInfo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -20,11 +24,33 @@ use Illuminate\Validation\ValidationException;
  */
 class AuthController extends Controller
 {
-    public function login(LoginRequest $request): JsonResponse
+    /**
+     * A math question for the login form.
+     */
+    public function captcha(): JsonResponse
     {
-        $admin = Admin::where('email', $request->string('email'))->first();
+        return response()->json(['data' => Captcha::create()]);
+    }
 
-        if (! $admin || ! Hash::check($request->string('password'), $admin->password)) {
+    public function login(AdminLoginRequest $request): JsonResponse
+    {
+        // checked first, so a wrong answer tells nothing about the password
+        if (! Captcha::check($request->string('captcha_token'), $request->string('captcha_answer'))) {
+            throw ValidationException::withMessages(['captcha_answer' => ['پاسخ سؤال امنیتی درست نیست.']]);
+        }
+
+        $admin = Admin::where('email', $request->string('email'))->first();
+        $succeeded = $admin && Hash::check($request->string('password'), $admin->password);
+
+        AdminLogin::create([
+            ...ClientInfo::of($request),
+            'admin_id' => $admin?->id,
+            'email' => Str::limit($request->string('email'), 255, ''),
+            'succeeded' => (bool) $succeeded,
+            'created_at' => now(),
+        ]);
+
+        if (! $succeeded) {
             throw ValidationException::withMessages(['email' => [__('auth.failed')]]);
         }
 

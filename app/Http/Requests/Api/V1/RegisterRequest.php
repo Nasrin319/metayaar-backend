@@ -32,7 +32,7 @@ class RegisterRequest extends FormRequest
     }
 
     /**
-     * Get the validation rules that apply to the request. The email, and the mobile when given, are
+     * Get the validation rules that apply to the request. The email and the mobile are both
      * proven with signup codes from POST auth/otp; see App\Support\Otp.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
@@ -44,8 +44,8 @@ class RegisterRequest extends FormRequest
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
             'email_code' => ['required', 'string', 'digits:6'],
-            'mobile' => ['nullable', 'string', 'regex:/^09\d{9}$/', 'unique:users,mobile'],
-            'mobile_code' => ['required_with:mobile', 'nullable', 'string', 'digits:6'],
+            'mobile' => ['required', 'string', 'regex:/^09\d{9}$/', 'unique:users,mobile'],
+            'mobile_code' => ['required', 'string', 'digits:6'],
             'device_name' => ['nullable', 'string', 'max:255'],
             'account_type' => ['sometimes', Rule::enum(AccountType::class)],
             'organization_name' => ['exclude_unless:account_type,organization', 'required', 'string', 'max:255', new PlainText],

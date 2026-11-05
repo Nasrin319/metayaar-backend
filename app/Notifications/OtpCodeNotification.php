@@ -37,7 +37,7 @@ class OtpCodeNotification extends Notification
             ->greeting('سلام،')
             ->line("کد {$this->purpose->label()} شما در متایار:")
             ->line("**{$this->code}**")
-            ->line("این کد تا {$this->minutes} دقیقه معتبر است. آن را در اختیار هیچ‌کس قرار ندهید.")
+            ->line("اعتبار این کد {$this->minutes} دقیقه است. آن را در اختیار هیچ‌کس قرار ندهید.")
             ->line('اگر شما این درخواست را نداده‌اید، این ایمیل را نادیده بگیرید.')
             ->salutation('تیم متایار');
     }

@@ -37,9 +37,7 @@ class AuthController extends Controller
         $email = $request->validated('email');
         $mobile = $request->validated('mobile');
         $otp->verifyOrFail(OtpChannel::Email, $email, OtpPurpose::Signup, $request->validated('email_code'), 'email_code', consume: false);
-        if ($mobile) {
-            $otp->verifyOrFail(OtpChannel::Mobile, $mobile, OtpPurpose::Signup, $request->validated('mobile_code'), 'mobile_code', consume: false);
-        }
+        $otp->verifyOrFail(OtpChannel::Mobile, $mobile, OtpPurpose::Signup, $request->validated('mobile_code'), 'mobile_code', consume: false);
 
         $user = DB::transaction(function () use ($request, $role, $mobile): User {
             $user = User::create([
@@ -49,7 +47,7 @@ class AuthController extends Controller
             $user->forceFill([
                 'email_verified_at' => now(),
                 'mobile' => $mobile,
-                'mobile_verified_at' => $mobile ? now() : null,
+                'mobile_verified_at' => now(),
             ])->save();
             $user->assignRole($role->value);
 
@@ -65,9 +63,7 @@ class AuthController extends Controller
         });
 
         $otp->forget(OtpChannel::Email, $email, OtpPurpose::Signup);
-        if ($mobile) {
-            $otp->forget(OtpChannel::Mobile, $mobile, OtpPurpose::Signup);
-        }
+        $otp->forget(OtpChannel::Mobile, $mobile, OtpPurpose::Signup);
 
         return $this->tokenResponse($user, $role, $request->input('device_name'), 201);
     }
@@ -201,7 +197,8 @@ class AuthController extends Controller
     {
         if (! $user->hasRole($role->value)) {
             throw ValidationException::withMessages([
-                $errorKey => ["This account does not have the {$role->value} role."],
+                // only reached with the right password or code, so this tells the owner nothing new about anyone else
+                $errorKey => ["This account does not have the {$role->value} role. Its roles: {$user->getRoleNames()->implode(',')}."],
             ]);
         }
     }

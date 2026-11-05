@@ -207,9 +207,11 @@ class OtpTest extends TestCase
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
             'email_code' => '123456',
+            'mobile' => '09123456789',
+            'mobile_code' => '123456',
             'password' => 'secret-password',
             'password_confirmation' => 'secret-password',
-        ])->assertUnprocessable()->assertOnlyJsonValidationErrors(['email_code']);
+        ])->assertUnprocessable()->assertJsonValidationErrors(['email_code']);
     }
 
     public function test_expired_codes_and_too_many_wrong_guesses_are_rejected(): void

@@ -61,6 +61,11 @@ class ListingController extends Controller
     {
         Gate::authorize('update', $listing);
 
+        // an exe must never be offered as an APK, or an APK as a Windows program
+        if ($listing->hasApk() && ($listing->type === ListingType::Windows) !== ($request->enum('type', ListingType::class) === ListingType::Windows)) {
+            throw ValidationException::withMessages(['type' => ['این اپ فایل دارد و نمی‌توان نوع آن را بین ویندوز و هدست عوض کرد. یک اپ جدید بسازید.']]);
+        }
+
         $listing->update($request->validated());
 
         return new ListingResource($listing);
@@ -84,6 +89,10 @@ class ListingController extends Controller
 
         if ($listing->type === ListingType::Apk && ! $listing->hasApk()) {
             throw ValidationException::withMessages(['apk' => ['پیش از ارسال برای بررسی، فایل APK را بارگذاری کنید.']]);
+        }
+
+        if ($listing->type === ListingType::Windows && ! $listing->hasApk()) {
+            throw ValidationException::withMessages(['apk' => ['پیش از ارسال برای بررسی، فایل exe یا zip را بارگذاری کنید.']]);
         }
 
         if ($listing->price > 0 && ! $request->user()->payoutAccount()->exists()) {

@@ -27,6 +27,7 @@ class StaffAccessCheck extends Command
         'comments.moderate' => 'نظرها',
         'users.manage' => 'کاربران سایت',
         'store.curate' => 'تب‌های فروشگاه',
+        'content.manage' => 'مقاله‌ها و بنرها',
         'staff.manage' => 'کارکنان و نقش‌ها',
         'statistics.view' => 'آمار دانلود',
         'settings.manage' => 'تنظیمات',

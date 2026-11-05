@@ -82,6 +82,7 @@ class Listing extends Model
             'links' => 'array',
             'early_access' => 'boolean',
             'submission_answers' => 'array',
+            'file_report' => 'array',
         ];
     }
 
@@ -148,21 +149,45 @@ class Listing extends Model
         return $this->apk_path !== null;
     }
 
+    /**
+     * The name a download of the listing's file is saved under, keeping its real extension.
+     */
+    public function downloadFileName(): string
+    {
+        return $this->slug.'.'.pathinfo((string) $this->apk_path, PATHINFO_EXTENSION);
+    }
+
+    /**
+     * The desktop app only installs responses of the APK type, so Windows files never reach a headset.
+     */
+    public function downloadContentType(): string
+    {
+        return match (pathinfo((string) $this->apk_path, PATHINFO_EXTENSION)) {
+            'exe' => 'application/vnd.microsoft.portable-executable',
+            'zip' => 'application/zip',
+            default => 'application/vnd.android.package-archive',
+        };
+    }
+
     public function isFree(): bool
     {
         return $this->price === 0;
     }
 
     /**
-     * Replace the listing's APK with a verified file already stored on the "apks" disk. The listing is
-     * then distributed as that APK instead of any external link.
+     * Replace the listing's file with a verified one already stored on the "apks" disk. The listing is
+     * then distributed as that file instead of any external link. A Windows listing stays one; any other
+     * becomes an APK listing.
+     *
+     * @param  array<string, mixed>|null  $report  What FileChecks found in the file.
      */
-    public function attachApk(string $path, string $originalName, int $size, string $sha256): void
+    public function attachApk(string $path, string $originalName, int $size, string $sha256, ?array $report = null): void
     {
         $previousPath = $this->apk_path;
 
         $this->forceFill([
-            'type' => ListingType::Apk,
+            'type' => $this->type === ListingType::Windows ? ListingType::Windows : ListingType::Apk,
+            'file_report' => $report,
             'external_url' => null,
             'apk_path' => $path,
             'apk_original_name' => $originalName,
@@ -323,7 +348,7 @@ class Listing extends Model
         $copy = $this->replicate([
             'slug', 'status', 'apk_path', 'apk_original_name', 'apk_size', 'apk_sha256', 'apk_uploaded_at',
             'icon_path', 'icon_from_apk', 'title_image_path', 'cover_path', 'screenshot_paths', 'submitted_at',
-            'submission_answers', 'reviewed_by', 'reviewed_at', 'rejection_reason',
+            'submission_answers', 'reviewed_by', 'reviewed_at', 'rejection_reason', 'file_report',
         ]);
         $copy->forceFill(['title' => "{$this->title} (copy)", 'package_name' => $packageName, 'status' => ListingStatus::Draft]);
         $copy->save();

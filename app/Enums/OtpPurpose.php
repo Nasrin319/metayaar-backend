@@ -7,7 +7,7 @@ namespace App\Enums;
  */
 enum OtpPurpose: string
 {
-    /** Prove the email (and mobile, if given) before the account is created. */
+    /** Prove the email and the mobile before the account is created. */
     case Signup = 'signup';
     /** Sign in without a password. */
     case Login = 'login';

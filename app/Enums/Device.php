@@ -16,4 +16,6 @@ enum Device: string
     case ViveFocus = 'vive_focus';
     case AppleVisionPro = 'vision_pro';
     case PcVr = 'pc_vr';
+    case Rift = 'rift';
+    case WindowsDesktop = 'windows_desktop';
 }

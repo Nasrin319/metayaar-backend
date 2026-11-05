@@ -3,7 +3,11 @@
 use App\Enums\OtpChannel;
 use App\Enums\Permission;
 use App\Enums\Role;
+use App\Http\Controllers\Api\V1\Admin\AdminLoginController;
+use App\Http\Controllers\Api\V1\Admin\ArticleController as AdminArticleController;
+use App\Http\Controllers\Api\V1\Admin\ArticleImageController;
 use App\Http\Controllers\Api\V1\Admin\AuthController as AdminAuthController;
+use App\Http\Controllers\Api\V1\Admin\BannerController as AdminBannerController;
 use App\Http\Controllers\Api\V1\Admin\CommentReviewController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\DownloadController as AdminDownloadController;
@@ -17,8 +21,10 @@ use App\Http\Controllers\Api\V1\Admin\StaffRoleController;
 use App\Http\Controllers\Api\V1\Admin\StoreTabController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\AppAccessController;
+use App\Http\Controllers\Api\V1\ArticleController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AvatarController;
+use App\Http\Controllers\Api\V1\BannerController;
 use App\Http\Controllers\Api\V1\CommentController;
 use App\Http\Controllers\Api\V1\Developer\ApkUploadController;
 use App\Http\Controllers\Api\V1\Developer\ListingController;
@@ -80,6 +86,10 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::get('apps/{listing:slug}', [StoreController::class, 'show'])->name('apps.show');
     // approved comments; a bearer token, when sent, adds the viewer's own comments still waiting
     Route::get('apps/{listing:slug}/comments', [CommentController::class, 'index'])->name('apps.comments.index');
+
+    Route::get('articles', [ArticleController::class, 'index'])->name('articles.index');
+    Route::get('articles/{article:slug}', [ArticleController::class, 'show'])->name('articles.show');
+    Route::get('banners', BannerController::class)->name('banners.index');
 
     // website accounts: members and developers
     Route::middleware(['auth:sanctum', 'account:user'])->group(function () {
@@ -155,6 +165,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
 
     // staff accounts of the admin panel (App\Models\Admin)
     Route::prefix('admin')->name('admin.')->group(function () {
+        Route::get('auth/captcha', [AdminAuthController::class, 'captcha'])
+            ->middleware('throttle:60,1')
+            ->name('auth.captcha');
         Route::post('auth/login', [AdminAuthController::class, 'login'])
             ->middleware('throttle:login')
             ->name('auth.login');
@@ -208,6 +221,12 @@ Route::prefix('v1')->name('v1.')->group(function () {
                 ->except('show')
                 ->middleware('permission:'.Permission::CurateStore->value);
 
+            Route::middleware('permission:'.Permission::ManageContent->value)->group(function () {
+                Route::apiResource('articles', AdminArticleController::class);
+                Route::post('article-images', [ArticleImageController::class, 'store'])->middleware('throttle:60,1')->name('article-images.store');
+                Route::apiResource('banners', AdminBannerController::class)->except('show');
+            });
+
             Route::middleware('permission:'.Permission::ManageFinance->value)->controller(FinanceController::class)->group(function () {
                 Route::get('finance', 'show')->name('finance.show');
                 Route::put('finance/commission', 'updateDefaultCommission')->name('finance.commission');
@@ -229,6 +248,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
 
             Route::middleware('permission:'.Permission::ManageStaff->value)->group(function () {
                 Route::get('permissions', [StaffRoleController::class, 'permissions'])->name('permissions.index');
+                Route::get('login-history', [AdminLoginController::class, 'index'])->name('login-history.index');
                 Route::apiResource('roles', StaffRoleController::class)->except('show');
                 Route::apiResource('staff', StaffController::class)->except('show')->parameters(['staff' => 'admin']);
             });

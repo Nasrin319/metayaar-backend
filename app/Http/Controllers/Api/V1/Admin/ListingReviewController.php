@@ -74,8 +74,8 @@ class ListingReviewController extends Controller
     {
         Gate::authorize('reviewDownload', $listing);
 
-        return Storage::disk('apks')->download($listing->apk_path, "{$listing->slug}.apk", [
-            'Content-Type' => 'application/vnd.android.package-archive',
+        return Storage::disk('apks')->download($listing->apk_path, $listing->downloadFileName(), [
+            'Content-Type' => $listing->downloadContentType(),
             'Cache-Control' => 'private, no-store',
         ]);
     }

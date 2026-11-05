@@ -11,13 +11,14 @@ enum ListingType: string
     case AppLab = 'app_lab';
     case WebXr = 'webxr';
     case PcVr = 'pc_vr';
+    case Windows = 'windows';
 
     /**
-     * Every type except APK points to an external page instead of a hosted file.
+     * APK and Windows listings host a file; the others point to an external page.
      */
     public function requiresExternalUrl(): bool
     {
-        return $this !== self::Apk;
+        return ! in_array($this, [self::Apk, self::Windows], true);
     }
 
     /**

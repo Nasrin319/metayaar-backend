@@ -34,8 +34,8 @@ class DownloadController extends Controller
             'user_agent' => $userAgent ? Str::limit($userAgent, 500, '') : null,
         ]);
 
-        return Storage::disk('apks')->download($listing->apk_path, "{$listing->slug}.apk", [
-            'Content-Type' => 'application/vnd.android.package-archive',
+        return Storage::disk('apks')->download($listing->apk_path, $listing->downloadFileName(), [
+            'Content-Type' => $listing->downloadContentType(),
             'Cache-Control' => 'private, no-store',
         ]);
     }

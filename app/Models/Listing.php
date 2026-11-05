@@ -83,6 +83,7 @@ class Listing extends Model
             'early_access' => 'boolean',
             'submission_answers' => 'array',
             'file_report' => 'array',
+            'is_private' => 'boolean',
         ];
     }
 
@@ -142,6 +143,37 @@ class Listing extends Model
     public function purchases(): HasMany
     {
         return $this->hasMany(Purchase::class);
+    }
+
+    /**
+     * The email addresses allowed to see this listing while it is private.
+     *
+     * @return HasMany<ListingInvite, $this>
+     */
+    public function invites(): HasMany
+    {
+        return $this->hasMany(ListingInvite::class);
+    }
+
+    /**
+     * Whether the store shows this listing to the person: a published public listing to anyone, a
+     * published private one to its developer and to invited addresses. An address only counts once its
+     * owner has verified it, or anyone could type someone else's email into their profile to get in.
+     */
+    public function isAvailableTo(?User $user): bool
+    {
+        if ($this->status !== ListingStatus::Published) {
+            return false;
+        }
+        if (! $this->is_private) {
+            return true;
+        }
+        if (! $user) {
+            return false;
+        }
+
+        return $this->user_id === $user->id
+            || ($user->email_verified_at && $this->invites()->where('email', mb_strtolower($user->email))->exists());
     }
 
     public function hasApk(): bool

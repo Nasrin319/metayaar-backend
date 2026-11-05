@@ -3,7 +3,6 @@
 namespace App\Policies;
 
 use App\Enums\CommentStatus;
-use App\Enums\ListingStatus;
 use App\Models\Comment;
 use App\Models\Listing;
 use App\Models\User;
@@ -17,7 +16,7 @@ class CommentPolicy
      */
     public function create(User $user, Listing $listing): Response
     {
-        if ($listing->status !== ListingStatus::Published) {
+        if (! $listing->isAvailableTo($user)) {
             return Response::denyAsNotFound();
         }
 

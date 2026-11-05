@@ -9,6 +9,7 @@ use App\Http\Resources\StoreListingResource;
 use App\Http\Resources\StoreTabResource;
 use App\Models\Listing;
 use App\Models\StoreTab;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Validation\Rule;
@@ -39,6 +40,7 @@ class StoreController extends Controller
 
         $listings = Listing::with('developer:id,name')
             ->where('status', ListingStatus::Published)
+            ->where('is_private', false)
             ->when($tab, fn ($query) => $tab->rule->apply($query, $tab->value))
             ->when($request->input('q'), fn ($query, $search) => $query->where(
                 fn ($query) => $query->whereLike('title', "%{$search}%")->orWhereLike('tagline', "%{$search}%")
@@ -71,12 +73,35 @@ class StoreController extends Controller
     }
 
     /**
-     * A published listing's store page. Drafts and listings in review are not found.
+     * A published listing's store page. Drafts, listings in review and private listings the viewer
+     * wasn't invited to are not found. A bearer token, when sent, says who the viewer is.
      */
-    public function show(Listing $listing): StoreListingResource
+    public function show(Request $request, Listing $listing): StoreListingResource
     {
-        abort_unless($listing->status === ListingStatus::Published, 404);
+        $viewer = $request->user('sanctum');
+        abort_unless($listing->isAvailableTo($viewer instanceof User ? $viewer : null), 404);
 
         return new StoreListingResource($listing->load('developer:id,name'));
+    }
+
+    /**
+     * Private listings the signed-in user's verified email was invited to, newest first.
+     */
+    public function privateApps(Request $request): AnonymousResourceCollection
+    {
+        $user = $request->user();
+        if (! $user->email_verified_at) {
+            return StoreListingResource::collection([]);
+        }
+
+        return StoreListingResource::collection(
+            Listing::with('developer:id,name')
+                ->where('status', ListingStatus::Published)
+                ->where('is_private', true)
+                ->whereHas('invites', fn ($query) => $query->where('email', mb_strtolower($user->email)))
+                ->latest('reviewed_at')
+                ->orderByDesc('id')
+                ->get()
+        );
     }
 }

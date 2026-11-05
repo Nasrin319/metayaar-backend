@@ -45,7 +45,7 @@ class ListingPolicy
 
     /**
      * Determine whether the user can download the listing's APK. Its developer can always fetch it;
-     * members need a published listing that is free or that they have purchased. Staff download through
+     * members need a published listing, available to them if private, that is free or that they have purchased. Staff download through
      * the admin API (see reviewDownload).
      */
     public function download(User $user, Listing $listing): Response
@@ -58,7 +58,7 @@ class ListingPolicy
             return Response::allow();
         }
 
-        if ($listing->status !== ListingStatus::Published) {
+        if (! $listing->isAvailableTo($user)) {
             return Response::denyAsNotFound();
         }
 

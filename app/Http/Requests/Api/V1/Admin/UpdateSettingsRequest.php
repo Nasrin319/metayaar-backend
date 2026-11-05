@@ -28,6 +28,7 @@ class UpdateSettingsRequest extends FormRequest
             'comments_per_minute' => ['sometimes', 'integer', 'min:1', 'max:60'],
             'session_hours' => ['sometimes', 'integer', 'min:1', 'max:720'],
             'payout_hold_days' => ['sometimes', 'integer', 'min:0', 'max:90'],
+            'private_listing_max_emails' => ['sometimes', 'integer', 'min:1', 'max:10000'],
         ];
     }
 
@@ -47,6 +48,7 @@ class UpdateSettingsRequest extends FormRequest
             'comments_per_minute.*' => 'تعداد ثبت نظر در دقیقه باید عددی بین ۱ تا ۶۰ باشد.',
             'session_hours.*' => 'مدت نشست ورود باید عددی بین ۱ تا ۷۲۰ ساعت باشد.',
             'payout_hold_days.*' => 'مهلت تسویه باید عددی بین ۰ تا ۹۰ روز باشد.',
+            'private_listing_max_emails.*' => 'تعداد ایمیل‌های هر اپ خصوصی باید عددی بین ۱ تا ۱۰۰۰۰ باشد.',
         ];
     }
 }

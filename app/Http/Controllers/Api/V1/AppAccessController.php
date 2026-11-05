@@ -15,6 +15,9 @@ class AppAccessController extends Controller
      */
     public function __invoke(Request $request, Listing $listing): JsonResponse
     {
+        // nothing about a private listing is told to people who weren't invited
+        abort_if($listing->is_private && $listing->user_id !== $request->user()->id && ! $listing->isAvailableTo($request->user()), 404);
+
         return response()->json([
             'data' => [
                 'can_download' => Gate::inspect('download', $listing)->allowed(),

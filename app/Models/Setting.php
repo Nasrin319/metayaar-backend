@@ -36,6 +36,8 @@ class Setting extends Model
         'default_commission_percent' => 20,
         // days after a purchase before a developer can ask to be paid for that sale
         'payout_hold_days' => 5,
+        // email addresses a developer can invite to one private listing
+        'private_listing_max_emails' => 100,
     ];
 
     private const string CACHE_KEY = 'settings';

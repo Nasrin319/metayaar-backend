@@ -54,7 +54,7 @@ class ListingController extends Controller
     {
         Gate::authorize('view', $listing);
 
-        return new ListingResource($listing);
+        return new ListingResource($listing->load('invites'));
     }
 
     public function update(ListingRequest $request, Listing $listing): ListingResource

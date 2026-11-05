@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\ListingStatus;
 use App\Enums\Permission;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StoreCommentRequest;
@@ -32,10 +31,10 @@ class CommentController extends Controller
      */
     public function index(Request $request, Listing $listing): AnonymousResourceCollection
     {
-        abort_unless($listing->status === ListingStatus::Published, 404);
-
         $viewer = $request->user('sanctum');
         $viewer = $viewer instanceof User ? $viewer : null;
+        abort_unless($listing->isAvailableTo($viewer), 404);
+
         $isDeveloper = $viewer?->id === $listing->user_id;
 
         $comments = $listing->comments()

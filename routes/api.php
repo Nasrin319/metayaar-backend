@@ -12,9 +12,9 @@ use App\Http\Controllers\Api\V1\Admin\CommentReviewController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\DownloadController as AdminDownloadController;
 use App\Http\Controllers\Api\V1\Admin\FinanceController;
-use App\Http\Controllers\Api\V1\Admin\PayoutRequestController;
 use App\Http\Controllers\Api\V1\Admin\ListingReviewController;
 use App\Http\Controllers\Api\V1\Admin\NotificationController;
+use App\Http\Controllers\Api\V1\Admin\PayoutRequestController;
 use App\Http\Controllers\Api\V1\Admin\SettingController;
 use App\Http\Controllers\Api\V1\Admin\StaffController;
 use App\Http\Controllers\Api\V1\Admin\StaffRoleController;
@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\V1\Developer\ListingDownloadController;
 use App\Http\Controllers\Api\V1\Developer\ListingMediaController;
 use App\Http\Controllers\Api\V1\Developer\PayoutAccountController;
 use App\Http\Controllers\Api\V1\Developer\PayoutRequestController as DeveloperPayoutRequestController;
+use App\Http\Controllers\Api\V1\Developer\PrivateAccessController;
 use App\Http\Controllers\Api\V1\Developer\WalletController;
 use App\Http\Controllers\Api\V1\DownloadController;
 use App\Http\Controllers\Api\V1\OtpController;
@@ -115,6 +116,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
             ->middleware('throttle:6,1')
             ->name('me.roles.store');
 
+        Route::get('me/private-apps', [StoreController::class, 'privateApps'])->name('me.private-apps');
         Route::get('apps/{listing:slug}/access', AppAccessController::class)->name('apps.access');
 
         Route::post('apps/{listing:slug}/comments', [CommentController::class, 'store'])
@@ -146,6 +148,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::apiResource('apps', ListingController::class)->parameters(['apps' => 'listing']);
             Route::post('apps/{listing}/submit', [ListingController::class, 'submit'])->name('apps.submit');
             Route::post('apps/{listing}/duplicate', [ListingController::class, 'duplicate'])->name('apps.duplicate');
+            Route::put('apps/{listing}/private-access', [PrivateAccessController::class, 'update'])->name('apps.private-access');
             Route::get('apps/{listing}/downloads', ListingDownloadController::class)->name('apps.downloads');
 
             Route::prefix('apps/{listing}/media')->name('apps.media.')->controller(ListingMediaController::class)->group(function () {

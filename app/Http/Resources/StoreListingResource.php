@@ -37,6 +37,7 @@ class StoreListingResource extends JsonResource
             'links' => $this->links ?? [],
             'trailer_url' => $this->trailer_url,
             'early_access' => $this->early_access,
+            'is_private' => $this->is_private,
             'apk_size' => $this->apk_size,
             'icon_url' => $this->iconUrl(),
             'title_image_url' => $this->titleImageUrl(),

@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Listing;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -42,6 +43,13 @@ class ListingResource extends JsonResource
             'links' => $this->links ?? [],
             'trailer_url' => $this->trailer_url,
             'early_access' => $this->early_access,
+            'is_private' => (bool) $this->is_private,
+            'invites_count' => $this->whenCounted('invites'),
+            // only the developer's own view loads these
+            'private_access' => $this->whenLoaded('invites', fn () => [
+                'emails' => $this->invites->pluck('email')->sort()->values(),
+                'max_emails' => Setting::integer('private_listing_max_emails'),
+            ]),
             'downloads_count' => $this->whenCounted('downloads'),
             'apk' => $this->hasApk() ? [
                 'original_name' => $this->apk_original_name,

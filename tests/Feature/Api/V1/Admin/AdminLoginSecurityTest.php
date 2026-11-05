@@ -8,6 +8,7 @@ use App\Models\AdminLogin;
 use App\Support\Captcha;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -47,6 +48,15 @@ class AdminLoginSecurityTest extends TestCase
         $this->assertStringStartsWith('data:image/png;base64,', $data['image']);
         $this->assertSame('image/png', getimagesizefromstring(base64_decode(substr($data['image'], 22)))['mime']);
         $this->assertStringNotContainsString('answer', $data['token']);
+    }
+
+    public function test_a_question_never_has_a_negative_answer(): void
+    {
+        for ($i = 0; $i < 50; $i++) {
+            $answer = json_decode(Crypt::decryptString(Captcha::create()['token']), true)['answer'];
+
+            $this->assertGreaterThan(0, $answer);
+        }
     }
 
     public function test_a_missing_or_wrong_answer_refuses_even_the_right_password(): void

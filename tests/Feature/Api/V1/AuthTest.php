@@ -52,7 +52,6 @@ class AuthTest extends TestCase
     #[DataProvider('selfRegisterableRoles')]
     public function test_user_can_register_with_self_registerable_role(Role $role): void
     {
-        $this->issueOtp(OtpChannel::Email, 'jane@example.com', OtpPurpose::Signup);
         $this->issueOtp(OtpChannel::Mobile, '09123456789', OtpPurpose::Signup);
 
         $response = $this->postJson(route('v1.auth.register', $role->value), [
@@ -60,7 +59,6 @@ class AuthTest extends TestCase
             'email' => 'jane@example.com',
             'password' => 'secret-password',
             'password_confirmation' => 'secret-password',
-            'email_code' => '123456',
             'mobile' => '09123456789',
             'mobile_code' => '123456',
         ]);
@@ -77,7 +75,6 @@ class AuthTest extends TestCase
     #[DataProvider('selfRegisterableRoles')]
     public function test_user_can_register_as_an_organization(Role $role): void
     {
-        $this->issueOtp(OtpChannel::Email, 'jane@example.com', OtpPurpose::Signup);
         $this->issueOtp(OtpChannel::Mobile, '09123456789', OtpPurpose::Signup);
 
         $response = $this->postJson(route('v1.auth.register', $role->value), [
@@ -85,7 +82,6 @@ class AuthTest extends TestCase
             'email' => 'jane@example.com',
             'password' => 'secret-password',
             'password_confirmation' => 'secret-password',
-            'email_code' => '123456',
             'mobile' => '09123456789',
             'mobile_code' => '123456',
             'account_type' => 'organization',
@@ -107,7 +103,6 @@ class AuthTest extends TestCase
 
     public function test_individual_registration_ignores_organization_fields(): void
     {
-        $this->issueOtp(OtpChannel::Email, 'jane@example.com', OtpPurpose::Signup);
         $this->issueOtp(OtpChannel::Mobile, '09123456789', OtpPurpose::Signup);
 
         $this->postJson(route('v1.auth.register', 'member'), [
@@ -115,7 +110,6 @@ class AuthTest extends TestCase
             'email' => 'jane@example.com',
             'password' => 'secret-password',
             'password_confirmation' => 'secret-password',
-            'email_code' => '123456',
             'mobile' => '09123456789',
             'mobile_code' => '123456',
             'organization_name' => 'Acme VR',
@@ -189,13 +183,11 @@ class AuthTest extends TestCase
 
     public function test_register_needs_a_mobile_and_its_code(): void
     {
-        $this->issueOtp(OtpChannel::Email, 'jane@example.com', OtpPurpose::Signup);
         $payload = [
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
             'password' => 'secret-password',
             'password_confirmation' => 'secret-password',
-            'email_code' => '123456',
         ];
 
         $this->postJson(route('v1.auth.register', 'member'), $payload)

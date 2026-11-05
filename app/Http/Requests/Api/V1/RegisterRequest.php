@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api\V1;
 
 use App\Enums\AccountType;
+use App\Enums\Role;
 use App\Rules\PlainText;
 use App\Support\Mobile;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -24,7 +25,7 @@ class RegisterRequest extends FormRequest
     {
         // emails are stored lowercase, see LoginRequest
         if (is_string($this->input('email'))) {
-            $this->merge(['email' => mb_strtolower(trim($this->input('email')))]);
+            $this->merge(['email' => mb_strtolower(trim($this->input('email'))) ?: null]);
         }
         if (is_string($this->input('mobile')) && trim($this->input('mobile')) !== '') {
             $this->merge(['mobile' => Mobile::normalize($this->input('mobile'))]);
@@ -32,8 +33,9 @@ class RegisterRequest extends FormRequest
     }
 
     /**
-     * Get the validation rules that apply to the request. The email and the mobile are both
-     * proven with signup codes from POST auth/otp; see App\Support\Otp.
+     * Get the validation rules that apply to the request. The mobile is proven with a signup code
+     * from POST auth/otp. Members may leave the email out; developers must give one. It is confirmed
+     * later from the profile, see VerificationController.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
@@ -41,9 +43,11 @@ class RegisterRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255', new PlainText],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
+            'email' => [
+                Rule::requiredIf(fn (): bool => $this->route('role') === Role::Developer),
+                'nullable', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email',
+            ],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
-            'email_code' => ['required', 'string', 'digits:6'],
             'mobile' => ['required', 'string', 'regex:/^09\d{9}$/', 'unique:users,mobile'],
             'mobile_code' => ['required', 'string', 'digits:6'],
             'device_name' => ['nullable', 'string', 'max:255'],

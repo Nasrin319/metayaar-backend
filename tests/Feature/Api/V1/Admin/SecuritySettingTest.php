@@ -9,6 +9,7 @@ use App\Models\Admin;
 use App\Models\Listing;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\Captcha;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -94,8 +95,8 @@ class SecuritySettingTest extends TestCase
         Notification::fake();
         Setting::put(['otp_requests_per_minute' => 1]);
 
-        $this->postJson(route('v1.auth.otp.send'), ['channel' => 'email', 'destination' => 'a@example.com', 'purpose' => 'signup'])->assertOk();
-        $this->postJson(route('v1.auth.otp.send'), ['channel' => 'email', 'destination' => 'b@example.com', 'purpose' => 'signup'])
+        $this->postJson(route('v1.auth.otp.send'), ['channel' => 'mobile', 'destination' => '09120000001', 'purpose' => 'signup'])->assertOk();
+        $this->postJson(route('v1.auth.otp.send'), ['channel' => 'mobile', 'destination' => '09120000002', 'purpose' => 'signup'])
             ->assertTooManyRequests()
             ->assertJsonPath('message', 'تعداد درخواست کد زیاد است. یک دقیقه دیگر دوباره امتحان کنید.');
     }
@@ -119,7 +120,7 @@ class SecuritySettingTest extends TestCase
         Notification::fake();
         Setting::put(['otp_resend_seconds' => 90, 'otp_ttl_minutes' => 10]);
 
-        $this->postJson(route('v1.auth.otp.send'), ['channel' => 'email', 'destination' => 'a@example.com', 'purpose' => 'signup'])
+        $this->postJson(route('v1.auth.otp.send'), ['channel' => 'mobile', 'destination' => '09120000001', 'purpose' => 'signup'])
             ->assertOk()
             ->assertJsonPath('resend_in', 90)
             ->assertJsonPath('expires_in', 600);
@@ -134,7 +135,7 @@ class SecuritySettingTest extends TestCase
 
         $this->postJson(route('v1.auth.login', 'member'), ['email' => $user->email, 'password' => 'password'])
             ->assertJsonPath('expires_at', now()->addHours(48)->toIso8601String());
-        $this->postJson(route('v1.admin.auth.login'), ['email' => $admin->email, 'password' => 'password', 'captcha_token' => \App\Support\Captcha::issue('1 + 1', 2)['token'], 'captcha_answer' => '2'])
+        $this->postJson(route('v1.admin.auth.login'), ['email' => $admin->email, 'password' => 'password', 'captcha_token' => Captcha::issue('1 + 1', 2)['token'], 'captcha_answer' => '2'])
             ->assertJsonPath('expires_at', now()->addHours(48)->toIso8601String());
     }
 }

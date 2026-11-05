@@ -11,6 +11,7 @@ use App\Support\Otp;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * The signed-in user confirms their email, or adds (or changes) their mobile, with a one-time code.
@@ -64,7 +65,8 @@ class VerificationController extends Controller
     private function destination(Request $request, OtpChannel $channel): string
     {
         if ($channel === OtpChannel::Email) {
-            return $request->user()->email;
+            return $request->user()->email
+                ?? throw ValidationException::withMessages(['email' => ['ابتدا ایمیل خود را در حساب کاربری ثبت کنید.']]);
         }
 
         $request->merge(['mobile' => Mobile::normalize($request->input('mobile'))]);

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Comfort;
+use App\Enums\ListingInviteStatus;
 use App\Enums\ListingMedia;
 use App\Enums\ListingStatus;
 use App\Enums\ListingType;
@@ -173,7 +174,7 @@ class Listing extends Model
         }
 
         return $this->user_id === $user->id
-            || ($user->email_verified_at && $this->invites()->where('email', mb_strtolower($user->email))->exists());
+            || ($user->email_verified_at && $this->invites()->where('status', ListingInviteStatus::Active)->where('email', mb_strtolower($user->email))->exists());
     }
 
     public function hasApk(): bool

@@ -2,14 +2,17 @@
 
 namespace Tests\Feature\Api\V1\Developer;
 
+use App\Enums\ListingInviteStatus;
 use App\Enums\ListingStatus;
 use App\Enums\Role;
 use App\Models\Admin;
 use App\Models\Listing;
 use App\Models\Setting;
 use App\Models\User;
+use App\Notifications\ListingInvitesAwaitingReview;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -128,6 +131,97 @@ class PrivateAccessTest extends TestCase
 
         $this->getJson(route('v1.developer.apps.show', $listing))
             ->assertJsonPath('data.private_access.max_emails', 100);
+    }
+
+    public function test_an_email_with_an_account_is_active_and_one_without_waits_for_staff(): void
+    {
+        Notification::fake();
+        Admin::factory()->create()->assignRole('admin');
+        $listing = Listing::factory()->for($this->developer, 'developer')->status(ListingStatus::Published)->create();
+        User::factory()->create(['email' => 'known@example.com']);
+        Sanctum::actingAs($this->developer);
+
+        $this->putJson(route('v1.developer.apps.private-access', $listing), [
+            'is_private' => true,
+            'emails' => ['known@example.com', 'ghost@example.com'],
+        ])->assertOk()
+            ->assertJsonPath('pending_review', ['ghost@example.com'])
+            ->assertJsonPath('data.private_access.invites.0.email', 'ghost@example.com')
+            ->assertJsonPath('data.private_access.invites.0.status', 'pending')
+            ->assertJsonPath('data.private_access.invites.1.status', 'active');
+
+        Notification::assertSentTimes(ListingInvitesAwaitingReview::class, 1);
+    }
+
+    public function test_a_pending_email_opens_nothing_until_staff_approve_it(): void
+    {
+        $listing = $this->privateListing();
+        $invite = $listing->invites()->create(['email' => 'late@example.com', 'status' => ListingInviteStatus::Pending]);
+        $late = User::factory()->create(['email' => 'late@example.com']);
+
+        Sanctum::actingAs($late);
+        $this->getJson(route('v1.apps.show', $listing))->assertNotFound();
+        $this->get(route('v1.apps.download', $listing))->assertNotFound();
+        $this->getJson(route('v1.me.private-apps'))->assertOk()->assertJsonCount(0, 'data');
+
+        Sanctum::actingAs(Admin::factory()->create()->assignRole('admin'));
+        $this->getJson(route('v1.admin.listings.show', $listing))->assertOk()
+            ->assertJsonPath('data.private_access.invites.0.status', 'pending');
+        $this->postJson(route('v1.admin.listings.invites.approve', [$listing, $invite]))->assertOk();
+        $this->postJson(route('v1.admin.listings.invites.reject', [$listing, $invite]))->assertConflict();
+
+        Sanctum::actingAs($late);
+        $this->getJson(route('v1.apps.show', $listing))->assertOk();
+    }
+
+    public function test_staff_can_reject_a_pending_email_and_saving_again_keeps_the_decision(): void
+    {
+        Notification::fake();
+        $listing = $this->privateListing();
+        $invite = $listing->invites()->create(['email' => 'ghost@example.com', 'status' => ListingInviteStatus::Pending]);
+
+        Sanctum::actingAs(Admin::factory()->create()->assignRole('admin'));
+        $this->postJson(route('v1.admin.listings.invites.reject', [$listing, $invite]))->assertOk();
+
+        Sanctum::actingAs($this->developer);
+        $this->putJson(route('v1.developer.apps.private-access', $listing), ['is_private' => true, 'emails' => ['ghost@example.com']])
+            ->assertOk()
+            ->assertJsonPath('pending_review', [])
+            ->assertJsonPath('data.private_access.invites.0.status', 'rejected');
+
+        Notification::assertNothingSent();
+    }
+
+    public function test_an_invite_of_another_listing_cannot_be_decided_through_this_one(): void
+    {
+        $listing = $this->privateListing();
+        $other = Listing::factory()->for($this->developer, 'developer')->create();
+        $invite = $other->invites()->create(['email' => 'ghost@example.com', 'status' => ListingInviteStatus::Pending]);
+
+        Sanctum::actingAs(Admin::factory()->create()->assignRole('admin'));
+        $this->postJson(route('v1.admin.listings.invites.approve', [$listing, $invite]))->assertNotFound();
+    }
+
+    public function test_only_reviewers_decide_on_pending_emails(): void
+    {
+        $listing = $this->privateListing();
+        $invite = $listing->invites()->create(['email' => 'ghost@example.com', 'status' => ListingInviteStatus::Pending]);
+
+        Sanctum::actingAs(Admin::factory()->create()->assignRole('curator'));
+        $this->postJson(route('v1.admin.listings.invites.approve', [$listing, $invite]))->assertForbidden();
+        $this->assertSame(ListingInviteStatus::Pending, $invite->fresh()->status);
+    }
+
+    public function test_an_email_that_has_since_signed_up_becomes_active_when_the_list_is_saved(): void
+    {
+        $listing = $this->privateListing();
+        $listing->invites()->create(['email' => 'late@example.com', 'status' => ListingInviteStatus::Pending]);
+        User::factory()->create(['email' => 'late@example.com']);
+        Sanctum::actingAs($this->developer);
+
+        $this->putJson(route('v1.developer.apps.private-access', $listing), ['is_private' => true, 'emails' => ['late@example.com']])
+            ->assertOk()
+            ->assertJsonPath('data.private_access.invites.0.status', 'active');
     }
 
     public function test_the_limit_comes_from_the_admin_setting(): void

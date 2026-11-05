@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Enums\Role;
 use App\Rules\PlainText;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -24,7 +25,7 @@ class UpdateProfileRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         if (is_string($this->input('email'))) {
-            $this->merge(['email' => mb_strtolower(trim($this->input('email')))]);
+            $this->merge(['email' => mb_strtolower(trim($this->input('email'))) ?: null]);
         }
     }
 
@@ -38,7 +39,9 @@ class UpdateProfileRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255', new PlainText],
             'email' => [
-                'required',
+                // only developers must keep one
+                Rule::requiredIf(fn (): bool => $this->user()->hasRole(Role::Developer->value)),
+                'nullable',
                 'string',
                 'lowercase',
                 'email',

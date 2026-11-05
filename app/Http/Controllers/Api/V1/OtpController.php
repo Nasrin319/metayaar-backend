@@ -17,21 +17,23 @@ use Illuminate\Validation\ValidationException;
 class OtpController extends Controller
 {
     /**
-     * Send a code. Signup codes only go to addresses and numbers without an account, and login codes
-     * only to ones with an account; both say so when that's not the case. Password reset codes only
-     * go to accounts too, but answer the same either way.
+     * Send a code. Signup codes only go to mobile numbers without an account, so a guest can't make
+     * Metayaar email a stranger; login codes only go to accounts. Both say so when that's not the case.
+     * Password reset codes only go to accounts too, but answer the same either way.
      */
     public function send(SendOtpRequest $request, Otp $otp): JsonResponse
     {
         $purpose = $request->purpose();
         $account = $request->account();
 
-        if ($purpose === OtpPurpose::Signup && $account) {
+        if ($purpose === OtpPurpose::Signup && $request->channel() === OtpChannel::Email) {
             throw ValidationException::withMessages([
-                'destination' => [$request->channel() === OtpChannel::Email
-                    ? 'حسابی با این ایمیل وجود دارد.'
-                    : 'حسابی با این شماره موبایل وجود دارد.'],
+                'destination' => ['کد ثبت‌نام فقط به موبایل ارسال می‌شود. ایمیل را بعد از ساخت حساب تأیید کنید.'],
             ]);
+        }
+
+        if ($purpose === OtpPurpose::Signup && $account) {
+            throw ValidationException::withMessages(['destination' => ['حسابی با این شماره موبایل وجود دارد.']]);
         }
 
         if ($purpose === OtpPurpose::Login && ! $account) {

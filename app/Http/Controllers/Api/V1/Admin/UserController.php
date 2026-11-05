@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Admin\UpdateUserRolesRequest;
 use App\Http\Resources\UserResource;
@@ -11,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Website accounts (members and developers) as staff manage them: roles, disabling and deleting.
@@ -18,7 +20,7 @@ use Illuminate\Validation\Rule;
 class UserController extends Controller
 {
     /**
-     * Users, newest first, optionally searched by name or email, or only active or disabled ones.
+     * Users, newest first, optionally searched by name, email or mobile, or only active or disabled ones.
      */
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -30,7 +32,7 @@ class UserController extends Controller
         $users = User::with('roles')
             ->withCount(['listings', 'purchases'])
             ->when($request->input('search'), fn ($query, $search) => $query->where(
-                fn ($query) => $query->whereLike('name', "%{$search}%")->orWhereLike('email', "%{$search}%")
+                fn ($query) => $query->whereLike('name', "%{$search}%")->orWhereLike('email', "%{$search}%")->orWhereLike('mobile', "%{$search}%")
             ))
             ->when($request->input('status') === 'disabled', fn ($query) => $query->whereNotNull('disabled_at'))
             ->when($request->input('status') === 'active', fn ($query) => $query->whereNull('disabled_at'))
@@ -46,6 +48,10 @@ class UserController extends Controller
      */
     public function updateRoles(UpdateUserRolesRequest $request, User $user): UserResource
     {
+        if (! $user->email && $request->collect('roles')->contains(Role::Developer->value)) {
+            throw ValidationException::withMessages(['roles' => ['این حساب ایمیل ندارد و نمی‌تواند توسعه‌دهنده باشد. ابتدا کاربر باید ایمیل خود را ثبت کند.']]);
+        }
+
         $user->syncRoles($request->collect('roles')->all());
 
         return new UserResource($user->fresh());

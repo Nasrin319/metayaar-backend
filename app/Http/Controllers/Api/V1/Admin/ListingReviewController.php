@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Enums\ListingInviteStatus;
 use App\Enums\ListingStatus;
 use App\Enums\ListingType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Admin\RejectListingRequest;
 use App\Http\Resources\ListingResource;
 use App\Models\Listing;
+use App\Models\ListingInvite;
 use App\Support\StaffNotifications;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -44,7 +46,34 @@ class ListingReviewController extends Controller
 
     public function show(Listing $listing): ListingResource
     {
-        return new ListingResource($listing->load('developer.payoutAccount')->loadCount('invites'));
+        return new ListingResource($listing->load(['developer.payoutAccount', 'invites'])->loadCount('invites'));
+    }
+
+    /**
+     * Let an email without an account onto the private listing's list: once its owner signs up and
+     * confirms it, they can open the listing.
+     */
+    public function approveInvite(Listing $listing, ListingInvite $invite): ListingResource
+    {
+        return $this->decideInvite($listing, $invite, ListingInviteStatus::Active);
+    }
+
+    public function rejectInvite(Listing $listing, ListingInvite $invite): ListingResource
+    {
+        return $this->decideInvite($listing, $invite, ListingInviteStatus::Rejected);
+    }
+
+    private function decideInvite(Listing $listing, ListingInvite $invite, ListingInviteStatus $status): ListingResource
+    {
+        abort_unless($invite->status === ListingInviteStatus::Pending, 409, 'برای این ایمیل قبلاً تصمیم گرفته شده است.');
+
+        $invite->update(['status' => $status]);
+
+        if (! $listing->invites()->where('status', ListingInviteStatus::Pending)->exists()) {
+            StaffNotifications::resolve('invite_listing_id', $listing->id);
+        }
+
+        return new ListingResource($listing->load(['developer', 'invites'])->loadCount('invites'));
     }
 
     public function approve(Request $request, Listing $listing): ListingResource

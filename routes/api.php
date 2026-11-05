@@ -196,6 +196,10 @@ Route::prefix('v1')->name('v1.')->group(function () {
                 Route::get('listings/{listing}', 'show')->name('listings.show');
                 Route::post('listings/{listing}/approve', 'approve')->name('listings.approve');
                 Route::post('listings/{listing}/reject', 'reject')->name('listings.reject');
+                Route::scopeBindings()->group(function () {
+                    Route::post('listings/{listing}/invites/{invite}/approve', 'approveInvite')->name('listings.invites.approve');
+                    Route::post('listings/{listing}/invites/{invite}/reject', 'rejectInvite')->name('listings.invites.reject');
+                });
                 Route::get('apps/{listing:slug}/download', 'download')->name('apps.download');
             });
 

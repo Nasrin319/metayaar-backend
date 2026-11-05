@@ -7,12 +7,12 @@ use App\Enums\OtpChannel;
 use App\Enums\OtpPurpose;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Api\V1\LoginRequest;
 use App\Http\Requests\Api\V1\Otp\LoginWithCodeRequest;
 use App\Http\Requests\Api\V1\RegisterRequest;
 use App\Http\Requests\Api\V1\UpdateOrganizationRequest;
 use App\Http\Requests\Api\V1\UpdatePasswordRequest;
 use App\Http\Requests\Api\V1\UpdateProfileRequest;
+use App\Http\Requests\Api\V1\UserLoginRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Setting;
 use App\Models\User;
@@ -27,17 +27,16 @@ class AuthController extends Controller
 {
     /**
      * Register a new account with the given self-registerable role (member or developer), as an
-     * individual or, with account_type=organization, as an organization with its details.
+     * individual or, with account_type=organization, as an organization with its details. Only the
+     * mobile is proven here. A member may have no email; one that is given stays unverified until its
+     * owner confirms it with a code from their profile.
      */
     public function register(RegisterRequest $request, Role $role, Otp $otp): JsonResponse
     {
         abort_unless($role->isSelfRegisterable(), 403, "Registration as {$role->value} is not allowed.");
 
-        // check every code before using any up, so one wrong code doesn't make the user resend both
-        $email = $request->validated('email');
         $mobile = $request->validated('mobile');
-        $otp->verifyOrFail(OtpChannel::Email, $email, OtpPurpose::Signup, $request->validated('email_code'), 'email_code', consume: false);
-        $otp->verifyOrFail(OtpChannel::Mobile, $mobile, OtpPurpose::Signup, $request->validated('mobile_code'), 'mobile_code', consume: false);
+        $otp->verifyOrFail(OtpChannel::Mobile, $mobile, OtpPurpose::Signup, $request->validated('mobile_code'), 'mobile_code');
 
         $user = DB::transaction(function () use ($request, $role, $mobile): User {
             $user = User::create([
@@ -45,7 +44,6 @@ class AuthController extends Controller
                 'account_type' => $request->accountType(),
             ]);
             $user->forceFill([
-                'email_verified_at' => now(),
                 'mobile' => $mobile,
                 'mobile_verified_at' => now(),
             ])->save();
@@ -62,27 +60,28 @@ class AuthController extends Controller
             return $user;
         });
 
-        $otp->forget(OtpChannel::Email, $email, OtpPurpose::Signup);
         $otp->forget(OtpChannel::Mobile, $mobile, OtpPurpose::Signup);
 
         return $this->tokenResponse($user, $role, $request->input('device_name'), 201);
     }
 
     /**
-     * Log in to the panel of the given role. The account must hold that role.
+     * Log in to the panel of the given role with an email or mobile and a password. The account must
+     * hold that role.
      */
-    public function login(LoginRequest $request, Role $role): JsonResponse
+    public function login(UserLoginRequest $request, Role $role): JsonResponse
     {
-        $user = User::where('email', $request->string('email'))->first();
+        $field = $request->filled('email') ? 'email' : 'mobile';
+        $user = User::where($field, $request->string($field))->first();
 
         if (! $user || ! Hash::check($request->string('password'), $user->password)) {
             throw ValidationException::withMessages([
-                'email' => [__('auth.failed')],
+                $field => [__('auth.failed')],
             ]);
         }
 
-        $this->ensureNotDisabled($user, 'email');
-        $this->ensureHasRole($user, $role, 'email');
+        $this->ensureNotDisabled($user, $field);
+        $this->ensureHasRole($user, $role, $field);
 
         return $this->tokenResponse($user, $role, $request->input('device_name'));
     }
@@ -130,6 +129,11 @@ class AuthController extends Controller
         abort_unless($role->isSelfRegisterable(), 403, "The {$role->value} role cannot be self-assigned.");
 
         $user = $request->user();
+
+        if ($role === Role::Developer && ! $user->email) {
+            throw ValidationException::withMessages(['email' => ['برای توسعه‌دهنده شدن، ابتدا ایمیل خود را در حساب کاربری ثبت کنید.']]);
+        }
+
         $user->assignRole($role->value);
         $request->user()->currentAccessToken()->delete();
 

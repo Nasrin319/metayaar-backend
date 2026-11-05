@@ -48,11 +48,13 @@ class OtpTest extends TestCase
         });
     }
 
-    public function test_signup_code_is_emailed_and_stored_hashed(): void
+    public function test_login_code_is_emailed_and_stored_hashed(): void
     {
+        User::factory()->create(['email' => 'jane@example.com'])->assignRole(Role::Member->value);
+
         Notification::fake();
 
-        $this->postJson(route('v1.auth.otp.send'), ['channel' => 'email', 'destination' => 'Jane@Example.com', 'purpose' => 'signup'])
+        $this->postJson(route('v1.auth.otp.send'), ['channel' => 'email', 'destination' => 'Jane@Example.com', 'purpose' => 'login'])
             ->assertOk()
             ->assertJsonPath('resend_in', Otp::resendSeconds());
 
@@ -60,7 +62,7 @@ class OtpTest extends TestCase
         Notification::assertSentOnDemand(OtpCodeNotification::class, function (OtpCodeNotification $notification, array $channels, object $notifiable) use (&$code): bool {
             $code = $notification->code;
 
-            return $notifiable->routes['mail'] === 'jane@example.com' && $notification->purpose === OtpPurpose::Signup;
+            return $notifiable->routes['mail'] === 'jane@example.com' && $notification->purpose === OtpPurpose::Login;
         });
 
         $this->assertMatchesRegularExpression('/^\d{6}$/', $code);
@@ -89,7 +91,7 @@ class OtpTest extends TestCase
     public function test_codes_cannot_be_resent_right_away(): void
     {
         Notification::fake();
-        $payload = ['channel' => 'email', 'destination' => 'jane@example.com', 'purpose' => 'signup'];
+        $payload = ['channel' => 'mobile', 'destination' => '09123456789', 'purpose' => 'signup'];
 
         $this->postJson(route('v1.auth.otp.send'), $payload)->assertOk();
         $this->postJson(route('v1.auth.otp.send'), $payload)->assertTooManyRequests();
@@ -99,16 +101,15 @@ class OtpTest extends TestCase
         $this->assertDatabaseCount('otp_codes', 1);
     }
 
-    public function test_signup_code_is_refused_for_a_registered_email(): void
+    public function test_signup_code_is_refused_for_a_registered_mobile(): void
     {
-        Notification::fake();
-        User::factory()->create(['email' => 'jane@example.com']);
+        User::factory()->create(['mobile' => '09123456789']);
 
-        $this->postJson(route('v1.auth.otp.send'), ['channel' => 'email', 'destination' => 'jane@example.com', 'purpose' => 'signup'])
+        $this->postJson(route('v1.auth.otp.send'), ['channel' => 'mobile', 'destination' => '09123456789', 'purpose' => 'signup'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['destination']);
 
-        Notification::assertNothingSent();
+        $this->assertCount(0, $this->sentSms);
     }
 
     public function test_login_codes_only_go_to_accounts_and_say_so_otherwise(): void
@@ -166,7 +167,7 @@ class OtpTest extends TestCase
         $this->assertSame(0, (int) OtpLockout::query()->value('sends'));
     }
 
-    public function test_registration_requires_valid_codes_and_verifies_email_and_mobile(): void
+    public function test_registration_needs_only_the_mobile_code_and_leaves_the_email_unverified(): void
     {
         $payload = [
             'name' => 'Jane Doe',
@@ -178,40 +179,78 @@ class OtpTest extends TestCase
 
         $this->postJson(route('v1.auth.register', 'member'), $payload)
             ->assertUnprocessable()
-            ->assertOnlyJsonValidationErrors(['email_code', 'mobile_code']);
+            ->assertOnlyJsonValidationErrors(['mobile_code']);
 
-        $this->issueOtp(OtpChannel::Email, 'jane@example.com', OtpPurpose::Signup, '111111');
         $this->issueOtp(OtpChannel::Mobile, '09123456789', OtpPurpose::Signup, '222222');
 
-        // a wrong mobile code doesn't use up the right email code
-        $this->postJson(route('v1.auth.register', 'member'), [...$payload, 'email_code' => '111111', 'mobile_code' => '999999'])
+        $this->postJson(route('v1.auth.register', 'member'), [...$payload, 'mobile_code' => '999999'])
             ->assertUnprocessable()
             ->assertOnlyJsonValidationErrors(['mobile_code']);
 
-        $this->postJson(route('v1.auth.register', 'member'), [...$payload, 'email_code' => '111111', 'mobile_code' => '222222'])
+        $this->postJson(route('v1.auth.register', 'member'), [...$payload, 'mobile_code' => '222222'])
             ->assertCreated()
-            ->assertJsonPath('user.mobile', '09123456789');
+            ->assertJsonPath('user.mobile', '09123456789')
+            ->assertJsonPath('user.email_verified_at', null);
 
         $user = User::firstWhere('email', 'jane@example.com');
-        $this->assertNotNull($user->email_verified_at);
+        $this->assertNull($user->email_verified_at);
         $this->assertNotNull($user->mobile_verified_at);
+        $this->assertDatabaseCount('otp_codes', 0);
+    }
+
+    public function test_a_new_account_confirms_its_email_with_a_code_after_signing_up(): void
+    {
+        Notification::fake();
+        $this->issueOtp(OtpChannel::Mobile, '09123456789', OtpPurpose::Signup, '222222');
+
+        $token = $this->postJson(route('v1.auth.register', 'member'), [
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+            'mobile' => '09123456789',
+            'mobile_code' => '222222',
+            'password' => 'secret-password',
+            'password_confirmation' => 'secret-password',
+        ])->assertCreated()->json('token');
+
+        $this->withToken($token)->postJson(route('v1.me.verification.send', 'email'))->assertOk();
+        Notification::assertSentOnDemand(OtpCodeNotification::class);
+        $this->assertDatabaseHas('otp_codes', ['channel' => 'email', 'destination' => 'jane@example.com', 'purpose' => 'verify']);
+
+        $this->issueOtp(OtpChannel::Email, 'jane@example.com', OtpPurpose::Verify, '333333');
+        $this->withToken($token)->postJson(route('v1.me.verification.verify', 'email'), ['code' => '000000'])->assertUnprocessable();
+        $this->assertNull(User::firstWhere('email', 'jane@example.com')->email_verified_at);
+
+        $this->withToken($token)->postJson(route('v1.me.verification.verify', 'email'), ['code' => '333333'])
+            ->assertOk()
+            ->assertJsonPath('data.email', 'jane@example.com');
+        $this->assertNotNull(User::firstWhere('email', 'jane@example.com')->email_verified_at);
+    }
+
+    public function test_guests_cannot_make_metayaar_send_a_signup_email(): void
+    {
+        Notification::fake();
+
+        $this->postJson(route('v1.auth.otp.send'), ['channel' => 'email', 'destination' => 'stranger@example.com', 'purpose' => 'signup'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['destination']);
+
+        Notification::assertNothingSent();
         $this->assertDatabaseCount('otp_codes', 0);
     }
 
     public function test_codes_for_another_purpose_or_destination_are_rejected(): void
     {
-        $this->issueOtp(OtpChannel::Email, 'jane@example.com', OtpPurpose::Login);
-        $this->issueOtp(OtpChannel::Email, 'other@example.com', OtpPurpose::Signup);
+        $this->issueOtp(OtpChannel::Mobile, '09123456789', OtpPurpose::Login);
+        $this->issueOtp(OtpChannel::Mobile, '09120000000', OtpPurpose::Signup);
 
         $this->postJson(route('v1.auth.register', 'member'), [
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
-            'email_code' => '123456',
             'mobile' => '09123456789',
             'mobile_code' => '123456',
             'password' => 'secret-password',
             'password_confirmation' => 'secret-password',
-        ])->assertUnprocessable()->assertJsonValidationErrors(['email_code']);
+        ])->assertUnprocessable()->assertJsonValidationErrors(['mobile_code']);
     }
 
     public function test_expired_codes_and_too_many_wrong_guesses_are_rejected(): void

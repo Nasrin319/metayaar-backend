@@ -135,6 +135,7 @@ class ListingController extends Controller
         $listing->delete();
         // also removes the notifications about its comments, which carry the listing_id too
         StaffNotifications::forget('listing_id', [$listing->id]);
+        StaffNotifications::forget('invite_listing_id', [$listing->id]);
 
         return response()->json(null, 204);
     }

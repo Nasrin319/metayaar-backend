@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\ListingInviteStatus;
 use App\Enums\ListingStatus;
 use App\Enums\ListingType;
 use App\Http\Controllers\Controller;
@@ -85,7 +86,7 @@ class StoreController extends Controller
     }
 
     /**
-     * Private listings the signed-in user's verified email was invited to, newest first.
+     * Private listings the signed-in user's verified email is active on, newest first.
      */
     public function privateApps(Request $request): AnonymousResourceCollection
     {
@@ -98,7 +99,7 @@ class StoreController extends Controller
             Listing::with('developer:id,name')
                 ->where('status', ListingStatus::Published)
                 ->where('is_private', true)
-                ->whereHas('invites', fn ($query) => $query->where('email', mb_strtolower($user->email)))
+                ->whereHas('invites', fn ($query) => $query->where('status', ListingInviteStatus::Active)->where('email', mb_strtolower($user->email)))
                 ->latest('reviewed_at')
                 ->orderByDesc('id')
                 ->get()

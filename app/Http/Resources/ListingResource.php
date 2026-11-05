@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Listing;
+use App\Models\ListingInvite;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -48,6 +49,11 @@ class ListingResource extends JsonResource
             // only the developer's own view loads these
             'private_access' => $this->whenLoaded('invites', fn () => [
                 'emails' => $this->invites->pluck('email')->sort()->values(),
+                'invites' => $this->invites->sortBy('email')->values()->map(fn (ListingInvite $invite): array => [
+                    'id' => $invite->id,
+                    'email' => $invite->email,
+                    'status' => $invite->status,
+                ]),
                 'max_emails' => Setting::integer('private_listing_max_emails'),
             ]),
             'downloads_count' => $this->whenCounted('downloads'),

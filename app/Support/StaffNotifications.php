@@ -40,7 +40,7 @@ class StaffNotifications
     /**
      * The item was handled: its unread notifications no longer need anyone's attention.
      *
-     * @param  'comment_id'|'listing_id'|'payout_request_id'  $key
+     * @param  'comment_id'|'listing_id'|'invite_listing_id'|'payout_request_id'  $key
      */
     public static function resolve(string $key, int $id): void
     {
@@ -54,7 +54,7 @@ class StaffNotifications
     /**
      * The item is gone: remove its notifications, whose links would lead nowhere.
      *
-     * @param  'comment_id'|'listing_id'  $key
+     * @param  'comment_id'|'listing_id'|'invite_listing_id'  $key
      * @param  list<int>  $ids
      */
     public static function forget(string $key, array $ids): void
